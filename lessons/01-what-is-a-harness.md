@@ -51,7 +51,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A[基本 Harness<br/>概念] --> B["本機 Harness<br/>治理＋執行骨架<br/>→ 第 02 課"]
+    A[基本 Harness<br/>概念] --> A2["Agent 完整架構 V4.1<br/>→ 第 07 課"] --> B["本機 Harness<br/>治理＋執行骨架<br/>→ 第 02 課"]
     B --> C["eduHarness<br/>教育領域化：Brain + Skills<br/>→ 第 03 課"]
     C --> D["eduHarness_Nooa<br/>Cloud v0.3 / Registry v3<br/>→ 第 04 課"]
 ```

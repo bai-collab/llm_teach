@@ -8,6 +8,10 @@
 | 我要講… | 看這篇 | 關鍵字 |
 |---|---|---|
 | Harness 是什麼？跟模型差在哪？ | [01 什麼是 Harness](lessons/01-what-is-a-harness.md) | context、tools、guardrails、state、verification |
+| Agent 完整架構：Harness／Agent／核心循環三層 | [07 AI Agent 架構 V4.1](lessons/07-ai-agent-architecture-v4-1.md) §1–§4 | Orchestration、Planner、Think→Act→Observe |
+| Skill、Tool、MCP 差在哪 | [07](lessons/07-ai-agent-architecture-v4-1.md) §5 | Skill 編排 Tool、MCP 是連接方式 |
+| **Hooks 生命週期介入點（Pre-Agent / Pre-Tool / Post-Tool…）** | [07](lessons/07-ai-agent-architecture-v4-1.md) §6 | 對照 Claude Code hooks |
+| Reflection 與回饋迴圈、Final Answer vs Artifact | [07](lessons/07-ai-agent-architecture-v4-1.md) §7 | Feedback Loop |
 | AI 任務怎麼一步步跑（分類→規劃→核准→執行→驗證） | [02 本機 Harness](lessons/02-local-harness-adaptive-loop.md) §2 | adaptive loop、11 blocks |
 | Route Plan 是什麼、每個節點要寫什麼 | [02](lessons/02-local-harness-adaptive-loop.md) §3 | objective、depends_on、fallback、verifier |
 | Claude / Codex / agy 怎麼分工、怎麼派工 | [02](lessons/02-local-harness-adaptive-loop.md) §5 | 腦／手／眼、codex-rescue、advisory |
@@ -28,7 +32,9 @@
 
 ```mermaid
 flowchart LR
-    L1[01 Harness 概念] --> L2[02 本機 Harness<br/>Route Plan · 分工 · 驗證]
+    L1[01 Harness 概念] --> L7[07 Agent 架構 V4.1<br/>三層 · 核心循環 · Hooks]
+    L7 --> L2[02 本機 Harness<br/>Route Plan · 分工 · 驗證]
+    L7 -.Hooks.-> L5
     L2 --> L3[03 eduHarness<br/>Skill 工作流]
     L3 --> L4[04 Nooa<br/>Cloud · Registry v3]
     L1 --> L5[05 Claude Code Mod<br/>Hook 流程]
@@ -37,8 +43,9 @@ flowchart LR
     L5 --> L6
 ```
 
-- **只有 1 堂課**：01 → 02（§1、§2、§5、§6）
-- **想講實作**：05 全篇（附決策流程圖、測試、練習題）
+- **只有 1 堂課**：01 → 07（§1、§6）→ 02（§2、§5）
+- **講 Agent 基本架構**：07 全篇（可直接投影 `references/ai_agent_architecture/` 的互動 HTML）
+- **想講 Hook 實作**：07 §6 → 05 全篇（附決策流程圖、測試、練習題）
 - **教師研習**：01 → 03 → 04 §3（Human Gate）→ 06 teacher_UI
 
 ## 🗂️ 目錄
@@ -52,8 +59,10 @@ llm_teach/
 │  ├─ 03-eduharness-skills-workflow.md
 │  ├─ 04-eduharness-nooa-cloud-registry-v3.md
 │  ├─ 05-claude-code-mod-hook-flow.md
-│  └─ 06-related-llm-projects.md
+│  ├─ 06-related-llm-projects.md
+│  └─ 07-ai-agent-architecture-v4-1.md
 └─ references/                       # 原始資料快照（離線可用）
+   ├─ ai_agent_architecture/         # AI Agent 完整架構 V4.1 互動 HTML
    ├─ eduHarness_Nooa/               # harness-map.html、architecture.html、流程圖 png
    └─ claude_code_mod/               # prompt-optimizer plugin 原始碼＋marketplace.json
 ```
@@ -65,6 +74,7 @@ llm_teach/
 | 治理 Harness 全景圖 | [harness-map.html](https://bai-collab.github.io/eduHarness_Nooa/docs/harness-map.html) | [references/eduHarness_Nooa/harness-map.html](references/eduHarness_Nooa/harness-map.html) |
 | Harness → eduHarness → Nooa 架構視覺化 | [harness-eduharness-nooa-architecture.html](https://bai-collab.github.io/eduHarness_Nooa/docs/harness-eduharness-nooa-architecture.html) | [references/eduHarness_Nooa/harness-eduharness-nooa-architecture.html](references/eduHarness_Nooa/harness-eduharness-nooa-architecture.html) |
 | eduHarness_Nooa 流程圖 | [repo docs/](https://github.com/bai-collab/eduHarness_Nooa/tree/main/docs) | [references/eduHarness_Nooa/eduHarness_Nooa-flow.png](references/eduHarness_Nooa/eduHarness_Nooa-flow.png) |
+| AI Agent 完整架構 V4.1 | （使用者提供） | [references/ai_agent_architecture/ai_agent_architecture_v4_1.html](references/ai_agent_architecture/ai_agent_architecture_v4_1.html) |
 | claude_code_mod | [bai-collab/claude_code_mod](https://github.com/bai-collab/claude_code_mod) | [references/claude_code_mod/](references/claude_code_mod/) |
 
 快照版本：eduHarness_Nooa `dfd42ae`、claude_code_mod `e1ee8a0`（2026-10-11 擷取）。原 repo 更新後，以線上版本為準。

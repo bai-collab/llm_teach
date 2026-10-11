@@ -3,6 +3,7 @@
 > **一句話**：mod（plugin）用 function hooks 在 Claude Code 的事件管線上「插一段中介層」——收到事件 `e`，決定要不要改它，再交給 `next(e)` 往下傳。
 >
 > 來源：[bai-collab/claude_code_mod](https://github.com/bai-collab/claude_code_mod)（commit `e1ee8a0`）｜本地快照：[`references/claude_code_mod/`](../references/claude_code_mod/)
+> 先備：[07 AI Agent 架構 V4.1 §6 Hooks](07-ai-agent-architecture-v4-1.md)（本 mod 屬於 Pre-Agent 類 hook）
 > ⚠️ README 註明 function hooks（`hooks/register.ts`）是 **early access API**，介面可能變動。
 
 ---
