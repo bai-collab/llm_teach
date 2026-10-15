@@ -60,6 +60,7 @@ button.primary{border-color:var(--yellow);color:var(--yellow)}
 @media (max-width:700px){
   #panel{left:0;right:0;top:auto;width:auto;max-height:62vh;border-radius:16px 16px 0 0;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
   #hud{max-width:58vw}
+  #panel.compact{max-height:40vh}
   #toast{top:calc(118px + env(safe-area-inset-top,0px))}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -279,6 +280,64 @@ if(THREE_OK){
   objs.flag=makeFlag();objs.flag.position.set(DEEP[0],H(...DEEP),DEEP[1]);scene.add(objs.flag);
   things.push({type:'flag',id:'flag',x:DEEP[0],z:DEEP[1],obj:objs.flag});
 }
+const lerp=(a,b,k)=>a+(b-a)*k;
+// ===== 第一島：AI 小幫手的 3D 示範動作 =====
+let demo=null; const DEMO_LEN=5;
+const seeded=(i,k)=>{const x=Math.sin(i*12.9898+k*78.233)*43758.5453;return x-Math.floor(x)};
+function dm(geo,color,opt={}){const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial(Object.assign({color,flatShading:true,roughness:0.7},opt)));m.castShadow=true;return m}
+function startDemo(t){
+  endDemo(); if(!THREE_OK) return;
+  const g=new THREE.Group(); scene.add(g);
+  const O=new THREE.Vector3(t.x,H(t.x,t.z),t.z-4); g.position.copy(O);g.scale.setScalar(1.5);
+  const parts=[], id=t.id;
+  if(id==='r1'){ // 加快速度：一圈一圈快跑，紙張一張張疊成草稿
+    for(let k=0;k<12;k++){const s=dm(new THREE.SphereGeometry(0.28,8,8),0xf2c14e,{emissive:0xf2c14e,emissiveIntensity:0.6});g.add(s);parts.push(s)}
+    for(let k=0;k<9;k++){const p=dm(new THREE.BoxGeometry(2.2,0.12,1.6),0xefe9d8);p.position.set(0,0.1+k*0.16,0);p.rotation.y=(seeded(k,1)-0.5)*0.5;g.add(p);parts.push(p)}
+  }
+  if(id==='r2'){ // 協助發想：派出五個探測球四處找，再冒出一圈點子
+    for(let k=0;k<5;k++){const s=dm(new THREE.SphereGeometry(0.45,10,10),[0xf2c14e,0xe8875b,0x8fd18a,0x7fb6d9,0xe66a5c][k],{emissive:0x332211});g.add(s);parts.push(s)}
+    for(let k=0;k<12;k++){const c=dm(new THREE.BoxGeometry(1,0.7,0.12),k%2?0xf2c14e:0xe8875b,{emissive:0x442200,emissiveIntensity:0.4});g.add(c);parts.push(c)}
+  }
+  if(id==='r3'){ // 協助分析：散亂的方塊排成兩條整齊的線
+    for(let k=0;k<10;k++){const c=dm(new THREE.BoxGeometry(0.9,0.9,0.9),[0xe8875b,0x7fb6d9][k%2]);g.add(c);parts.push(c)}
+    for(let k=0;k<2;k++){const l=dm(new THREE.BoxGeometry(8.4,0.12,0.12),[0xe8875b,0x7fb6d9][k]);g.add(l);parts.push(l)}
+  }
+  if(id==='r4'){ // 協助批判：放大鏡掃過文件，找到錯誤打叉
+    const paper=dm(new THREE.BoxGeometry(5,0.1,3.4),0xefe9d8);paper.position.y=0.1;g.add(paper);parts.push(paper);
+    for(let k=0;k<5;k++){const ln=dm(new THREE.BoxGeometry(k===4?2.2:3.8,0.04,0.14),0x9aa69c);ln.position.set(k===4?-0.8:0,0.18,-1.2+k*0.6);g.add(ln);parts.push(ln)}
+    const mg=new THREE.Group();const ring=dm(new THREE.TorusGeometry(0.75,0.14,8,20),0x7fb6d9);ring.rotation.x=-Math.PI/2;const hd=dm(new THREE.CylinderGeometry(0.12,0.12,1.6,6),0x6e4c31);hd.rotation.z=Math.PI/2;hd.position.set(1.5,0,0);mg.add(ring,hd);g.add(mg);parts.push(mg);
+    const x=new THREE.Group();const a=dm(new THREE.BoxGeometry(1.4,0.12,0.22),0xe66a5c,{emissive:0xe66a5c,emissiveIntensity:0.5}),b=a.clone();a.rotation.y=Math.PI/4;b.rotation.y=-Math.PI/4;x.add(a,b);x.position.set(0.6,0.3,0.6);g.add(x);parts.push(x);
+    const ex=new THREE.Group();const bar=dm(new THREE.BoxGeometry(0.28,1,0.28),0xe66a5c),dot=dm(new THREE.SphereGeometry(0.2,8,8),0xe66a5c);dot.position.y=-0.8;ex.add(bar,dot);g.add(ex);parts.push(ex);
+  }
+  if(id==='r5'){ // 協助整理：便利貼亂掉一地，再排成清單並打勾
+    for(let k=0;k<6;k++){const n=dm(new THREE.BoxGeometry(1.1,0.08,1.1),[0xf2c14e,0xe8875b,0x8fd18a,0x7fb6d9,0xefe9d8,0xe66a5c][k]);g.add(n);parts.push(n)}
+    for(let k=0;k<6;k++){const c=new THREE.Group();const a=dm(new THREE.BoxGeometry(0.5,0.14,0.14),0x8fd18a,{emissive:0x8fd18a,emissiveIntensity:0.4}),b=dm(new THREE.BoxGeometry(0.9,0.14,0.14),0x8fd18a,{emissive:0x8fd18a,emissiveIntensity:0.4});a.rotation.y=-Math.PI/4;a.position.set(-0.15,0,0.1);b.rotation.y=Math.PI/4;b.position.set(0.25,0,-0.05);c.add(a,b);g.add(c);parts.push(c)}
+  }
+  demo={t,g,parts,u:0,O};panel.classList.add('compact');if(objs.player)objs.player.visible=false;
+}
+function endDemo(){panel.classList.remove('compact');if(objs.player)objs.player.visible=true;if(!demo)return;scene.remove(demo.g);demo.g.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose()});demo=null}
+const easeIO=x=>x<0.5?2*x*x:1-Math.pow(-2*x+2,2)/2, cl01=x=>Math.min(1,Math.max(0,x)), pr=(u,a,b)=>cl01((u-a)/(b-a));
+function updateDemo(dt){
+  if(!demo)return; demo.u=Math.min(DEMO_LEN+0.5,demo.u+dt); const u=demo.u,P2=demo.parts,id=demo.t.id,bot=demo.t.obj,O=demo.O;
+  const botAt=(x,z,lift=0)=>{x*=1.5;z*=1.5;bot.position.set(O.x+x,H(O.x+x,O.z+z)+lift,O.z+z)};
+  if(id==='r1'){const run=u<3.6,a=u*7,r=3.2;
+    if(run){botAt(Math.cos(a)*r,Math.sin(a)*r-1);bot.rotation.y=-a}
+    for(let k=0;k<12;k++){const b=a-k*0.22;P2[k].position.set(Math.cos(b)*r,0.6,Math.sin(b)*r-1);P2[k].visible=run&&u>0.2;P2[k].scale.setScalar(1-k/14)}
+    for(let k=0;k<9;k++){const p=P2[12+k],s=pr(u,0.3+k*0.35,0.5+k*0.35);p.visible=s>0;p.scale.set(1,1,1).multiplyScalar(0.3+0.7*s)}}
+  if(id==='r2'){for(let k=0;k<5;k++){const ang=k*Math.PI*2/5+0.3,go=u<1.2?easeIO(pr(u,0,1.2)):1-easeIO(pr(u,1.6,2.6)),r=go*8;P2[k].position.set(Math.cos(ang)*r,1.5+Math.sin(u*6+k)*0.4,Math.sin(ang)*r-2);P2[k].visible=u<2.7}
+    for(let k=0;k<12;k++){const c=P2[5+k],s=easeIO(pr(u,2.6+k*0.12,3+k*0.12)),ang=k*Math.PI*2/12;c.visible=s>0;c.scale.setScalar(Math.max(0.01,s));c.position.set(Math.cos(ang)*4,3+Math.sin(u*3+k)*0.3+(k%2)*0.8,Math.sin(ang)*4-2);c.rotation.y=-ang+Math.PI/2}
+    bot.position.y=H(bot.position.x,bot.position.z)+Math.abs(Math.sin(u*4))*0.4*(u<2.6?1:0.2)}
+  if(id==='r3'){for(let k=0;k<10;k++){const c=P2[k],sx=(seeded(k,2)-0.5)*9,sy=1+seeded(k,3)*3,sz=(seeded(k,4)-0.5)*5-1,row=k%2,tx=-3.6+Math.floor(k/2)*1.8,tz=-2+row*2.4,s=easeIO(pr(u,1,3));
+      c.position.set(lerp(sx,tx,s),lerp(sy,0.5,s),lerp(sz,tz,s));c.rotation.set((1-s)*seeded(k,5)*3,(1-s)*seeded(k,6)*3,0)}
+    for(let k=0;k<2;k++){const l=P2[10+k],s=pr(u,3.2+k*0.3,3.8+k*0.3);l.visible=s>0;l.scale.set(Math.max(0.01,s),1,1);l.position.set(-3.6+4.2*s-0.0,0.5,-2+k*2.4)}}
+  if(id==='r4'){const mg=P2[6],sweep=pr(u,0.3,2.6);mg.position.set(-1.8+3.6*sweep,1.2,-1.2+Math.floor(sweep*4)/3*2.4*0.8+0.0);mg.visible=u<3.4;
+    const hit=pr(u,2.4,2.8);P2[7].visible=hit>0;P2[7].scale.setScalar(Math.max(0.01,easeIO(hit)));
+    const ex=P2[8];ex.visible=u>2.6;ex.position.set((bot.position.x-O.x)/1.5,3.4+Math.abs(Math.sin(u*8))*0.3*(u<3.6?1:0),bot.position.z-O.z);
+    if(u>2.6&&u<3.4)bot.position.y=H(bot.position.x,bot.position.z)+Math.abs(Math.sin((u-2.6)*8))*0.8}
+  if(id==='r5'){for(let k=0;k<6;k++){const n=P2[k],fx=(seeded(k,7)-0.5)*6,fz=(seeded(k,8)-0.5)*4-1,fall=easeIO(pr(u,k*0.15,0.6+k*0.15)),tidy=easeIO(pr(u,1.6+k*0.15,2.4+k*0.15));
+      const tx=-1.5,ty=0.2+k*0.0,tz=-3+k*1.2;n.position.set(lerp(fx,tx,tidy),lerp(lerp(7,0.1,fall),ty,tidy),lerp(fz,tz,tidy));n.rotation.y=(1-tidy)*seeded(k,9)*3;n.visible=u>k*0.15}
+    for(let k=0;k<6;k++){const c=P2[6+k],s=easeIO(pr(u,3.3+k*0.18,3.6+k*0.18));c.visible=s>0;c.scale.setScalar(Math.max(0.01,s));c.position.set(0,0.3,-3+k*1.2)}}
+}
 // ===== 玩家狀態 =====
 const P={x:-4,z:14,vx:0,vz:0,heading:Math.PI,walk:0,inPit:0,pitHinted:false,isl:1};
 const keys={};let stick={x:0,y:0};
@@ -299,14 +358,15 @@ function renderHud(){
 }
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function openPanel(html){panel.innerHTML=html+'<div class="row"><button type="button" id="panelClose">關閉（Esc）</button></div>';panel.hidden=false;panelOpen=true;$('panelClose').onclick=closePanel;$('panelClose').focus()}
-function closePanel(){panel.hidden=true;panelOpen=false;canvas.focus&&canvas.focus()}
+function closePanel(){panel.hidden=true;panelOpen=false;endDemo();canvas.focus&&canvas.focus()}
 function interact(){
   if(panelOpen){closePanel();return}
   if(!near)return;const t=near;
   if(t.type==='station'){add('visited',t.id);const s=t.data;
     openPanel(`<div class="kind">${esc(s.kind)}・第${'一二三四'[s.island-1]||s.island}島</div><h2 id="panelTitle">${esc(s.title)}</h2><p>${esc(s.text)}</p><div class="row"><a class="btn" href="${esc(s.url)}" target="_blank" rel="noopener">打開${esc(s.kind)}</a></div>`)}
   if(t.type==='role'){const r=t.data;const first=add('talked',r.id);
-    openPanel(`<div class="kind">AI 小幫手</div><h2 id="panelTitle">${esc(r.name)}</h2><p>「${esc(r.line)}」</p><p class="ex">${esc(r.ex)}</p><p style="color:var(--chalk-dim);font-size:.9rem">已認識 ${S.talked.length}/5 種角色</p>`);
+    openPanel(`<div class="kind">AI 小幫手</div><h2 id="panelTitle">${esc(r.name)}</h2><p>「${esc(r.line)}」</p><p class="ex">${esc(r.ex)}</p><p style="color:var(--chalk-dim);font-size:.9rem">看它在畫面中示範一次。已認識 ${S.talked.length}/5 種角色</p><div class="row"><button type="button" id="demoAgain">再看一次</button></div>`);
+    startDemo(t);$('demoAgain').onclick=()=>startDemo(t);
     if(first&&S.talked.length===5&&add('badges','b1')){toast('拿到第一島徽章！東邊的橋亮起來了，過橋去第二島吧。',5)}}
   if(t.type==='npc'){const n=t.data;openPanel(`<div class="kind">${esc(n.name)}</div><h2 id="panelTitle">${esc(n.name)}說</h2><p>「${esc(n.line)}」</p>`)}
   if(t.type==='flag'){winIsland2()}
@@ -408,16 +468,17 @@ function step(dt){
   if(Math.hypot(P.x-DEEP[0],P.z-DEEP[1])<4&&!has('badges','b2')&&!panelOpen)winIsland2();
   // 找最近的可互動物件
   near=null;let best=6;
-  for(const t of things){if(t.type==='role'){const a=clock*0.4+t.phase;t.x=t.home[0]+Math.cos(a)*2.4;t.z=t.home[1]+Math.sin(a)*2.4}
+  for(const t of things){if(t.type==='role'&&!(demo&&demo.t===t)){const a=clock*0.4+t.phase;t.x=t.home[0]+Math.cos(a)*2.4;t.z=t.home[1]+Math.sin(a)*2.4}
     const d=Math.hypot(t.x-P.x,t.z-P.z);if(d<best&&t.type!=='flag'){best=d;near=t}}
   if(toastT>0){toastT-=dt;if(toastT<=0)toastEl.hidden=true}
+  updateDemo(dt);
   if(near&&!panelOpen){promptEl.innerHTML=`<b>${isTouch?'點「查看」':'按 E'}</b>：${esc(near.type==='station'?near.data.title:near.data.name)}`;promptEl.hidden=false}else promptEl.hidden=true;
 }
 function draw(){
   if(!THREE_OK)return;
   const pl=objs.player;pl.position.set(P.x,groundY(P.x,P.z)+Math.abs(Math.sin(P.walk))*0.25,P.z);pl.rotation.y=P.heading;
   for(const t of things){
-    if(t.type==='role'){t.obj.position.set(t.x,H(t.x,t.z),t.z);t.obj.rotation.y=Math.atan2(P.x-t.x,P.z-t.z);t.obj.userData.check.visible=has('talked',t.id);t.obj.userData.check.rotation.y=clock*2}
+    if(t.type==='role'){if(!(demo&&demo.t===t)){t.obj.position.set(t.x,H(t.x,t.z),t.z);t.obj.rotation.y=Math.atan2(P.x-t.x,P.z-t.z)}t.obj.userData.check.visible=has('talked',t.id);t.obj.userData.check.rotation.y=clock*2}
     if(t.type==='station'){t.obj.userData.gem.rotation.y=clock;t.obj.userData.gem.position.y=4.3+Math.sin(clock*2+t.x)*0.25;t.obj.userData.gem.material.emissiveIntensity=has('visited',t.id)?0.15:0.6}
     if(t.type==='npc'){t.obj.rotation.y=Math.atan2(P.x-t.x,P.z-t.z)}
   }
@@ -429,7 +490,9 @@ function draw(){
   objs.flag.rotation.y=Math.sin(clock)*0.2;objs.sea.material.uniforms.uT.value=clock;
   for(let k=confetti.length-1;k>=0;k--){const m=confetti[k],v=m.userData.v;v[1]-=18*0.016;m.position.x+=v[0]*0.016;m.position.y+=v[1]*0.016;m.position.z+=v[2]*0.016;m.rotation.x+=0.2;if(m.position.y<-5){scene.remove(m);confetti.splice(k,1)}}
   // 跟隨鏡頭（固定斜角，方向鍵與畫面一致）
-  const tx=P.x,ty=groundY(P.x,P.z),tz=P.z;camera.position.lerp(new THREE.Vector3(tx,ty+26,tz+30),0.08);camera.lookAt(tx,ty+2,tz);
+  let tx=P.x,ty=groundY(P.x,P.z),tz=P.z,oy=26,oz=30;
+  if(demo){const narrow=innerWidth<700;tx=demo.O.x+(narrow?0:6);ty=demo.O.y;tz=demo.O.z+(narrow?6:1);oy=narrow?15:13;oz=narrow?17:17}
+  camera.position.lerp(new THREE.Vector3(tx,ty+oy,tz+oz),0.08);camera.lookAt(tx,ty+2,tz);
   renderer.render(scene,camera);
 }
 function resize(){if(!THREE_OK)return;renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}
