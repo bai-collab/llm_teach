@@ -2,7 +2,8 @@
 
 把 bai-collab 各 repo 中與 **LLM／Agent Harness／Claude Code** 相關的內容，整理成一門由淺入深的課。
 **網站版（含動畫）：<https://bai-collab.github.io/llm_teach/>**
-**遊戲版：<https://bai-collab.github.io/llm_teach/world/>**（操控 3D 老師走過四座島，每座島對應一個單元）
+**遊戲版：<https://bai-collab.github.io/llm_teach/world/>**（操控 3D 老師走過四座島，每座島對應一個單元；第一島西邊還有 Skill 圖書館）
+**Skill 藏書：[skills/](skills/README.md)**（23 本教學相關 skill 原檔，依用途與目的整理）
 
 ## 🧭 課程地圖
 
@@ -114,7 +115,8 @@
 ```text
 llm_teach/
 ├─ index.html                        # 網站首頁（課程地圖＋動畫入口）
-├─ world/index.html                  # 遊戲版：AI 協作群島（three.js，四座島對應四單元）
+├─ world/index.html                  # 遊戲版：AI 協作群島（四座島＋Skill 圖書館）
+├─ skills/                           # 23 本教學相關 skill 原檔與索引（README.md）
 ├─ README.md                         # ← 你在這裡：課程地圖與主題索引
 ├─ animations/                       # 教學動畫（單檔 HTML，GitHub Pages 可直接播放）
 │  ├─ teacher-as-director/index.html # 老師當導演：跟 AI 一起備課（123 秒・10 段，成果牆可點開作品）
