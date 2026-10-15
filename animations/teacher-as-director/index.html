@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<title>老師當導演</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* 版面：一塊教室黑板當舞台，下方是字幕與講者用的分段控制列（刻意只用黑板單一外觀） */
+:root{
+  --board:#23392f;      /* 黑板 */
+  --board-deep:#1a2b23; /* 黑板陰影與頁面底色 */
+  --frame:#6e4c31;      /* 木框 */
+  --chalk:#efe9d8;      /* 白粉筆 */
+  --chalk-dim:#a9b3a6;  /* 擦過的粉筆 */
+  --yellow:#f2c14e;     /* 黃粉筆：重點 */
+  --orange:#e8875b;     /* 作者 AI */
+  --blue:#7fb6d9;       /* 審查 AI */
+  --green:#8fd18a;      /* 通過 */
+  --red:#e66a5c;        /* 退件 */
+  --font-chalk:"LXGW WenKai TC","Kaiti TC","DFKai-SB","BiauKai",serif;
+  --font-body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--board-deep);color:var(--chalk)}
+body{margin:0;font-family:var(--font-body);padding-inline:16px;padding-block:20px 28px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px}
+h1{font-family:var(--font-chalk);font-weight:700;font-size:clamp(1.5rem,3.2vw,2.1rem);margin:0;color:var(--chalk);text-wrap:balance}
+.sub{color:var(--chalk-dim);font-size:.95rem;margin:0}
+.board{box-sizing:border-box;position:relative;border:14px solid var(--frame);border-radius:6px;background:var(--board);box-shadow:inset 0 0 60px rgba(0,0,0,.45);max-width:100%}
+.board svg{display:block;width:100%;height:auto;aspect-ratio:16/9}
+.caption{font-family:var(--font-chalk);font-size:clamp(1.05rem,2.2vw,1.45rem);line-height:1.5;min-height:2.3em;margin:0;color:var(--chalk)}
+.caption b{color:var(--yellow);font-weight:700}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+button{font:inherit;font-size:.95rem;color:var(--chalk);background:transparent;border:1.5px solid var(--chalk-dim);border-radius:999px;padding:.4em 1em;cursor:pointer}
+button:hover{border-color:var(--yellow);color:var(--yellow)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+#play{min-width:5.5em;border-color:var(--yellow);color:var(--yellow)}
+#scrub{flex:1 1 220px;min-width:0;accent-color:var(--yellow)}
+#time{font-variant-numeric:tabular-nums;color:var(--chalk-dim);font-size:.9rem;min-width:6.5em;text-align:right}
+.chapters{display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:0;list-style:none}
+.chapters button{font-size:.88rem;padding:.3em .85em;border-color:rgba(239,233,216,.25);color:var(--chalk-dim)}
+.chapters button[aria-current="true"]{border-color:var(--yellow);color:var(--yellow)}
+.note{color:var(--chalk-dim);font-size:.85rem;margin:0}
+/* 舞台內文字 */
+.t-chalk{font-family:var(--font-chalk);fill:var(--chalk)}
+.t-body{font-family:var(--font-body);fill:var(--chalk)}
+@media (prefers-reduced-motion: reduce){ .board{box-shadow:none} }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>老師當導演：我跟 AI 一起備課的方法</h1>
+    <p class="sub">兩分鐘・十段・可停在任一段解說</p>
+  </header>
+  <div class="board"><svg id="stage" viewBox="0 0 1600 900" role="img" aria-label="AI 協作備課動畫"></svg></div>
+  <p class="caption" id="caption" aria-live="polite"></p>
+  <div class="controls">
+    <button id="prev" type="button" aria-label="上一段">上一段</button>
+    <button id="play" type="button">播放</button>
+    <button id="next" type="button" aria-label="下一段">下一段</button>
+    <input id="scrub" type="range" min="0" max="123" step="0.05" value="0" aria-label="時間軸">
+    <span id="time">0.0 / 123.0</span>
+  </div>
+  <ul class="chapters" id="chapters"></ul>
+  <p class="note">鍵盤：空白鍵播放／暫停，左右方向鍵切換段落。畫面只由時間決定，可用 window.seek(t) 逐格輸出成影片。</p>
+</div>
+
+<script>
+// ===== 時間表（秒）=====
+window.DURATION = 123;
+// o：舊版場景的原始起點（舊場景以絕對時間撰寫，換算後沿用）；新場景收本段的經過秒數。
+const SEGS = [
+  {a:0,   b:8,   name:'開場',      cap:'AI 不是替你做事，是<b>你當導演</b>，AI 當小幫手。'},
+  {a:8,   b:20,  name:'先說清楚',  cap:'一句話需求，先展開成<b>給誰、學什麼、多長</b>，再開始做。'},
+  {a:20,  b:34,  name:'五種角色',  cap:'同一個 AI 可以<b>加快速度、協助發想、分析、批判、整理</b>。先決定這次要它當哪一種。'},
+  {a:34,  b:49,  name:'協助發想',  cap:'協助發想：AI 會<b>用各種工具四處找資料</b>，給出很多點子，老師挑出適合自己班的。'},
+  {a:49,  b:63,  name:'協助分析',  cap:'協助分析：把散落的書單、學習單、週次表，<b>整理成一張看得懂的路網</b>。'},
+  {a:63,  b:77,  name:'先畫路線圖',cap:'先畫路線圖，關鍵處停下來，<b>老師點頭才往下走</b>。'},
+  {a:77,  b:91,  name:'分工',      cap:'不同 AI 各領一張任務卡，<b>最後決定權在老師</b>。'},
+  {a:91,  b:103, name:'協助批判',  cap:'協助批判：做完交給<b>另一家 AI</b> 挑毛病，作者不能自己審自己。'},
+  {a:103, b:115, name:'錯誤筆記本',cap:'被糾正的事寫進筆記本，<b>下次備課前自動翻到那一頁</b>。'},
+  {a:115, b:123, name:'成果牆',    cap:'這些都從一句話開始。<b>你也可以。</b>'}
+];
+
+// ===== 純函數工具 =====
+const clamp=(x,lo,hi)=>Math.min(hi,Math.max(lo,x));
+const P=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+const ease=x=>1-Math.pow(1-x,3);
+const back=x=>{const c=1.6;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const lerp=(a,b,x)=>a+(b-a)*x;
+const typed=(s,x)=>s.slice(0,Math.round([...s].length*clamp(x,0,1))).replace(/[<>&]/g,'');
+function sceneOpacity(t,s,last){
+  const fin=P(t,s.a,s.a+0.5), fout=last?1:1-P(t,s.b-0.4,s.b);
+  return Math.min(fin,fout);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+
+// ===== 圖形元件 =====
+function teacher(x,y,o=1,s=1){
+  return `<g transform="translate(${x} ${y}) scale(${s})" opacity="${o}">
+    <circle cx="0" cy="-118" r="34" fill="none" stroke="var(--chalk)" stroke-width="5"/>
+    <path d="M-12 -122 q4 -5 8 0 M8 -122 q4 -5 8 0" stroke="var(--chalk)" stroke-width="3" fill="none"/>
+    <path d="M-8 -104 q8 7 16 0" stroke="var(--chalk)" stroke-width="3" fill="none"/>
+    <path d="M-48 0 Q-48 -78 0 -80 Q48 -78 48 0 Z" fill="none" stroke="var(--chalk)" stroke-width="5"/>
+    <rect x="-34" y="-60" width="68" height="26" rx="6" fill="var(--yellow)"/>
+    <text x="0" y="-41" text-anchor="middle" class="t-body" style="font-size:17px;font-weight:700;fill:var(--board-deep)">導演</text>
+  </g>`;
+}
+function helper(x,y,color,label,o=1,s=1,tag=''){
+  return `<g transform="translate(${x} ${y}) scale(${s})" opacity="${o}">
+    <line x1="0" y1="-62" x2="0" y2="-82" stroke="${color}" stroke-width="4"/>
+    <circle cx="0" cy="-86" r="7" fill="${color}"/>
+    <rect x="-46" y="-62" width="92" height="74" rx="18" fill="none" stroke="${color}" stroke-width="5"/>
+    <circle cx="-16" cy="-28" r="7" fill="${color}"/><circle cx="16" cy="-28" r="7" fill="${color}"/>
+    <path d="M-12 -8 q12 8 24 0" stroke="${color}" stroke-width="3.5" fill="none"/>
+    <text x="0" y="44" text-anchor="middle" class="t-chalk" style="font-size:26px;fill:${color}">${esc(label)}</text>
+    ${tag?`<text x="0" y="72" text-anchor="middle" class="t-body" style="font-size:17px;fill:var(--chalk-dim)">${esc(tag)}</text>`:''}
+  </g>`;
+}
+function card(x,y,w,h,title,body,o=1,color='var(--chalk)'){
+  return `<g transform="translate(${x} ${y})" opacity="${o}">
+    <rect x="0" y="0" width="${w}" height="${h}" rx="10" fill="rgba(239,233,216,.06)" stroke="${color}" stroke-width="3" stroke-dasharray="2 0"/>
+    <text x="22" y="40" class="t-body" style="font-size:20px;fill:var(--chalk-dim)">${esc(title)}</text>
+    <text x="22" y="${h-28}" class="t-chalk" style="font-size:32px;fill:${color}">${esc(body)}</text>
+  </g>`;
+}
+function doc(x,y,o=1,s=1,rot=0){
+  let lines='';
+  for(let i=0;i<5;i++) lines+=`<line x1="18" y1="${36+i*22}" x2="${i===4?70:102}" y2="${36+i*22}" stroke="var(--chalk-dim)" stroke-width="4"/>`;
+  return `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})" opacity="${o}">
+    <path d="M0 0 H96 L120 24 V150 H0 Z" fill="var(--board)" stroke="var(--chalk)" stroke-width="4"/>
+    <text x="18" y="26" class="t-body" style="font-size:15px;fill:var(--yellow)">教案</text>${lines}
+  </g>`;
+}
+function stamp(x,y,text,color,o,s,rot=-12){
+  return `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})" opacity="${o}">
+    <rect x="-110" y="-38" width="220" height="76" rx="10" fill="none" stroke="${color}" stroke-width="6"/>
+    <text x="0" y="14" text-anchor="middle" class="t-chalk" style="font-size:40px;font-weight:700;fill:${color}">${esc(text)}</text>
+  </g>`;
+}
+
+// ===== 各段畫面（每一格只由 t 決定）=====
+function s1(t){
+  const title='老師當導演';
+  let g=`<text x="800" y="250" text-anchor="middle" class="t-chalk" style="font-size:118px;font-weight:700">${typed(title,P(t,0.3,2.6))}</text>`;
+  g+=`<text x="800" y="335" text-anchor="middle" class="t-chalk" style="font-size:40px;fill:var(--yellow)" opacity="${ease(P(t,2.8,3.8))}">AI 不是替你做，是你當導演</text>`;
+  g+=teacher(800,700,ease(P(t,3.2,4)));
+  const hs=[[470,640,'var(--orange)','規劃'],[640,500,'var(--blue)','製作'],[960,500,'var(--green)','查資料'],[1130,640,'var(--yellow)','檢查']];
+  hs.forEach((h,i)=>{const x=P(t,4.2+i*0.45,4.9+i*0.45);g+=helper(h[0],h[1],h[2],h[3],x,back(x)*0.95)});
+  return g;
+}
+function s2(t){
+  let g=teacher(230,720,1);
+  const bub=ease(P(t,8.3,9));
+  g+=`<g opacity="${bub}"><path d="M300 520 Q290 430 380 420 H860 Q930 420 930 480 V520 Q930 580 860 580 H400 L320 630 Z" fill="none" stroke="var(--chalk)" stroke-width="4"/>
+    <text x="410" y="515" class="t-chalk" style="font-size:44px">${typed('幫我做一份臆測教案',P(t,8.8,11))}</text></g>`;
+  const arrow=ease(P(t,11.4,12.2));
+  g+=`<path d="M950 500 H${lerp(950,1040,arrow)}" stroke="var(--yellow)" stroke-width="5" opacity="${arrow}"/>`;
+  g+=`<text x="1000" y="130" class="t-chalk" style="font-size:34px;fill:var(--yellow)" opacity="${ease(P(t,11.6,12.4))}">先問清楚，再動手</text>`;
+  const cs=[['給誰','國小五年級'],['學什麼','倍數的規律'],['多長','兩節課・80 分鐘'],['只用哪些事實','課本第 3 單元']];
+  cs.forEach((c,i)=>{const x=ease(P(t,12.4+i*1.1,13.2+i*1.1));g+=card(lerp(1180,1060,x),170+i*170,470,140,c[0],c[1],x,i===3?'var(--yellow)':'var(--chalk)')});
+  return g;
+}
+function s3(t){
+  const nodes=[['規劃路線','主 AI'],['老師核准','等你點頭'],['製作','小幫手'],['檢查','另一家 AI'],['交付','給老師']];
+  const y0=110, dy=165, x=620;
+  let g=`<text x="1060" y="170" class="t-chalk" style="font-size:40px">先畫路線圖</text>
+    <text x="1060" y="230" class="t-body" style="font-size:24px;fill:var(--chalk-dim)">每一站做什麼、誰負責、</text>
+    <text x="1060" y="266" class="t-body" style="font-size:24px;fill:var(--chalk-dim)">哪裡要停下來等老師。</text>`;
+  // 點的位置：0→1 站，停在第 2 站（核准），再走到最後
+  let pos;
+  if(t<22) pos=0;
+  else if(t<24.5) pos=lerp(0,1,ease(P(t,22,24.5)));
+  else if(t<28.5) pos=1;
+  else pos=lerp(1,4,ease(P(t,28.5,32.5)));
+  const draw=ease(P(t,20.3,21.8));
+  g+=`<line x1="${x}" y1="${y0}" x2="${x}" y2="${lerp(y0,y0+dy*4,draw)}" stroke="var(--chalk-dim)" stroke-width="4" stroke-dasharray="10 10"/>`;
+  const approved=t>=28;
+  nodes.forEach((n,i)=>{
+    const o=ease(P(t,20.4+i*0.25,20.9+i*0.25));
+    const reached=pos>=i-0.01;
+    const isGate=i===1;
+    let col=reached?'var(--yellow)':'var(--chalk-dim)';
+    if(isGate) col=approved?'var(--green)':(reached?'var(--yellow)':'var(--chalk-dim)');
+    const pulse=isGate&&reached&&!approved?(1+0.08*Math.sin((t-24.5)*6)):1;
+    const shape=isGate
+      ?`<path d="M0 -50 L60 0 L0 50 L-60 0 Z" fill="var(--board)" stroke="${col}" stroke-width="5" transform="scale(${pulse})"/>`
+      :`<circle r="40" fill="var(--board)" stroke="${col}" stroke-width="5"/>`;
+    g+=`<g transform="translate(${x} ${y0+i*dy})" opacity="${o}">${shape}
+      <text x="${isGate?90:70}" y="-4" class="t-chalk" style="font-size:34px;fill:${col}">${esc(n[0])}</text>
+      <text x="${isGate?90:70}" y="30" class="t-body" style="font-size:20px;fill:var(--chalk-dim)">${isGate&&approved?'已核准':n[1]}</text></g>`;
+  });
+  g+=`<circle cx="${x}" cy="${y0+pos*dy}" r="14" fill="var(--yellow)" opacity="${draw}"/>`;
+  // 老師在核准站點頭
+  const tOp=ease(P(t,24.6,25.4));
+  g+=teacher(300,y0+dy+120,tOp,0.85);
+  g+=`<text x="300" y="${y0+dy-30}" text-anchor="middle" class="t-chalk" style="font-size:30px;fill:${approved?'var(--green)':'var(--yellow)'}" opacity="${tOp}">${approved?'好，往下做':'這樣可以嗎？'}</text>`;
+  return g;
+}
+function s4(t){
+  let g=teacher(250,760,1);
+  const hs=[[820,300,'var(--orange)','Claude','規劃・寫教案','寫教案'],[1100,300,'var(--blue)','Codex','動手做網頁','做闖關網頁'],[1380,300,'var(--green)','Gemini','大量閱讀・審查','查課綱與文獻']];
+  hs.forEach((h,i)=>{
+    const o=ease(P(t,34.3+i*0.3,35+i*0.3));
+    g+=helper(h[0],h[1],h[2],h[3],o,1,h[4]);
+    const f=ease(P(t,36+i*1.6,37.4+i*1.6));
+    const cx=lerp(330,h[0]-90,f), cy=lerp(620,470,f)-Math.sin(f*Math.PI)*120;
+    g+=`<g transform="translate(${cx} ${cy}) rotate(${lerp(-8,0,f)})" opacity="${P(t,35.8+i*1.6,36.1+i*1.6)}">
+      <rect x="0" y="0" width="180" height="70" rx="8" fill="var(--board)" stroke="${h[2]}" stroke-width="4"/>
+      <text x="90" y="45" text-anchor="middle" class="t-chalk" style="font-size:28px;fill:${h[2]}">${esc(h[5])}</text></g>`;
+  });
+  const st=P(t,43.2,44);
+  if(st>0) g+=stamp(560,640,'最後決定權',`var(--yellow)`,st,lerp(1.6,1,ease(st)),-8);
+  g+=`<text x="140" y="150" class="t-chalk" style="font-size:40px">粗工交給小幫手</text>
+      <text x="140" y="205" class="t-body" style="font-size:24px;fill:var(--chalk-dim)">各自擅長的事，分開做。</text>`;
+  return g;
+}
+function s5(t){
+  let g=`<text x="800" y="110" text-anchor="middle" class="t-chalk" style="font-size:46px;fill:var(--yellow)">協助批判：自己不審自己</text>`;
+  g+=helper(330,560,'var(--orange)','作者 AI',1,1.25);
+  g+=helper(1270,560,'var(--blue)','審查 AI',1,1.25,'不同家的模型');
+  const mv=ease(P(t,49,51.5));
+  const dx=lerp(420,740,mv);
+  g+=doc(dx,330,1,1.6);
+  // 放大鏡掃描
+  const sc=P(t,52,55.5);
+  if(t>=51.8){
+    const my=lerp(360,540,(Math.sin(sc*Math.PI*2-Math.PI/2)+1)/2);
+    g+=`<g opacity="${ease(P(t,51.8,52.3))*(1-P(t,57.5,58))}"><circle cx="${1000}" cy="${my}" r="44" fill="none" stroke="var(--blue)" stroke-width="6"/>
+       <line x1="1031" y1="${my+31}" x2="1078" y2="${my+78}" stroke="var(--blue)" stroke-width="10" stroke-linecap="round"/>
+       <line x1="${dx+10}" y1="${my}" x2="${dx+190}" y2="${my}" stroke="var(--blue)" stroke-width="2" opacity=".6"/></g>`;
+  }
+  const found=P(t,55.6,56.2);
+  const fo=found*(1-P(t,57.6,58));
+  if(fo>0){
+    g+=`<ellipse cx="${dx+95}" cy="${330+36+22*2}" rx="110" ry="26" fill="none" stroke="var(--red)" stroke-width="5" opacity="${fo}"/>
+        <text x="${dx+95}" y="640" text-anchor="middle" class="t-chalk" style="font-size:30px;fill:var(--red)" opacity="${fo}">這一行的數字不對</text>`;
+  }
+  const ok=P(t,58,58.6);
+  if(ok>0) g+=stamp(dx+100,470,'修正後通過','var(--green)',ok,lerp(1.7,1,ease(ok)));
+  return g;
+}
+function s6(t){
+  const open=ease(P(t,60.2,61.8));
+  const w=lerp(40,560,open);
+  let g=`<g transform="translate(800 470)">
+    <rect x="${-w}" y="-280" width="${w}" height="520" rx="8" fill="rgba(239,233,216,.06)" stroke="var(--chalk)" stroke-width="4"/>
+    <rect x="0" y="-280" width="${w}" height="520" rx="8" fill="rgba(239,233,216,.06)" stroke="var(--chalk)" stroke-width="4"/>
+    <line x1="0" y1="-280" x2="0" y2="240" stroke="var(--chalk)" stroke-width="5"/>`;
+  const inner=ease(P(open,0.8,1));
+  if(inner>0){
+    g+=`<g opacity="${inner}">`;
+    for(let i=0;i<7;i++) g+=`<line x1="-520" y1="${-180+i*60}" x2="-40" y2="${-180+i*60}" stroke="rgba(239,233,216,.12)" stroke-width="2"/><line x1="40" y1="${-180+i*60}" x2="520" y2="${-180+i*60}" stroke="rgba(239,233,216,.12)" stroke-width="2"/>`;
+    g+=`<text x="-500" y="-210" class="t-body" style="font-size:22px;fill:var(--chalk-dim)">錯誤筆記本</text>
+      <text x="-500" y="-130" class="t-chalk" style="font-size:36px">被提醒：</text>
+      <text x="-500" y="-70" class="t-chalk" style="font-size:36px">${typed('評量題超出五年級先備知識',P(t,62,64.5))}</text>
+      <text x="60" y="-130" class="t-chalk" style="font-size:36px;fill:var(--yellow)" opacity="${ease(P(t,65,65.4))}">下次備課：</text>
+      <text x="60" y="-70" class="t-chalk" style="font-size:36px;fill:var(--yellow)">${typed('先核對課綱，再出題',P(t,65.2,67.2))}</text>`;
+    g+=`</g>`;
+    const glow=P(t,68.4,69.2);
+    if(glow>0){
+      g+=`<rect x="-540" y="-170" width="1080" height="130" rx="10" fill="rgba(242,193,78,${0.14*glow})" stroke="var(--yellow)" stroke-width="3" opacity="${glow}"/>
+        <text x="0" y="140" text-anchor="middle" class="t-chalk" style="font-size:34px;fill:var(--yellow)" opacity="${glow}">下一次備課前，AI 先翻到這一頁</text>`;
+    }
+  }
+  g+='</g>';
+  const nx=P(t,67.6,68.4);
+  if(nx>0) g+=`<text x="800" y="70" text-anchor="middle" class="t-body" style="font-size:26px;fill:var(--chalk-dim)" opacity="${nx}">── 幾天後，準備下一個單元 ──</text>`;
+  if(t>=69) g+=helper(1300,800,'var(--orange)','照做',ease(P(t,69,69.8)),0.9);
+  return g;
+}
+function s7(t){
+  const tiles=[['臆測五階段教案','學生自己找出倍數規律'],['嘉義地圖闖關','小小地理偵探・五關'],['閱讀路網圖','北園閱讀 PBL 路線'],['教師儀表板','一眼看全班積木作答']];
+  let g=`<text x="800" y="110" text-anchor="middle" class="t-chalk" style="font-size:44px">都是從一句話開始的</text>`;
+  tiles.forEach((c,i)=>{
+    const x=P(t,72.3+i*0.7,73.1+i*0.7);
+    const col=i%2, row=Math.floor(i/2);
+    const tx=170+col*650, ty=lerp(60,170+row*230,back(x));
+    g+=`<g transform="translate(${tx} ${ty})" opacity="${ease(x)}">
+      <rect width="610" height="190" rx="12" fill="rgba(239,233,216,.05)" stroke="var(--chalk)" stroke-width="3"/>
+      <text x="34" y="82" class="t-chalk" style="font-size:44px;fill:var(--yellow)">${esc(c[0])}</text>
+      <text x="34" y="140" class="t-body" style="font-size:26px;fill:var(--chalk-dim)">${esc(c[1])}</text></g>`;
+  });
+  const end=ease(P(t,76.5,77.8));
+  g+=`<text x="800" y="790" text-anchor="middle" class="t-chalk" style="font-size:58px;font-weight:700;fill:var(--yellow)" opacity="${end}">你也可以從一句話開始</text>`;
+  return g;
+}
+// ===== 新增場景（u＝本段經過秒數）=====
+const rnd=(i,k)=>{const x=Math.sin(i*12.9898+k*78.233)*43758.5453;return x-Math.floor(x)}; // 固定種子
+function roles(u){
+  const R=[['加快速度','var(--yellow)','十分鐘排好','兩節課流程草稿'],['協助發想','var(--orange)','一次想出','二十種引起動機'],['協助分析','var(--green)','從雜亂資料','整理出脈絡'],['協助批判','var(--red)','找出題目','超出先備知識'],['協助整理','var(--blue)','把會議紀錄','變成待辦清單']];
+  let g=`<text x="800" y="120" text-anchor="middle" class="t-chalk" style="font-size:54px" opacity="${ease(P(u,0.2,1))}">AI 可以扮演五種角色</text>`;
+  R.forEach((r,i)=>{
+    const x=P(u,1+i*1.5,1.8+i*1.5), cx=200+i*300;
+    g+=helper(cx,380,r[1],'',x,back(x));
+    g+=`<g opacity="${ease(x)}"><text x="${cx}" y="470" text-anchor="middle" class="t-chalk" style="font-size:36px;font-weight:700;fill:${r[1]}">${esc(r[0])}</text>
+      <text x="${cx}" y="530" text-anchor="middle" class="t-body" style="font-size:22px;fill:var(--chalk-dim)">備課例：</text>
+      <text x="${cx}" y="568" text-anchor="middle" class="t-chalk" style="font-size:26px">${esc(r[2])}</text>
+      <text x="${cx}" y="604" text-anchor="middle" class="t-chalk" style="font-size:26px">${esc(r[3])}</text></g>`;
+  });
+  const end=ease(P(u,9.6,10.6));
+  g+=`<g opacity="${end}"><rect x="330" y="680" width="940" height="84" rx="12" fill="rgba(242,193,78,.08)" stroke="var(--yellow)" stroke-width="3"/>
+    <text x="800" y="735" text-anchor="middle" class="t-chalk" style="font-size:34px;fill:var(--yellow)">每次開工前，先決定這次要它當哪一種</text></g>`;
+  return g;
+}
+// 工具圖示（以 0,0 為中心）
+function toolIcon(k,c){
+  if(k===0) return `<circle cx="-6" cy="-6" r="14" fill="none" stroke="${c}" stroke-width="5"/><line x1="4" y1="4" x2="18" y2="18" stroke="${c}" stroke-width="6" stroke-linecap="round"/>`;
+  if(k===1) return `<path d="M-20 -14 Q-10 -20 0 -14 Q10 -20 20 -14 V16 Q10 10 0 16 Q-10 10 -20 16 Z M0 -14 V16" fill="none" stroke="${c}" stroke-width="4"/>`;
+  if(k===2) return `<rect x="-16" y="-20" width="32" height="40" rx="4" fill="none" stroke="${c}" stroke-width="4"/><line x1="-8" y1="-8" x2="8" y2="-8" stroke="${c}" stroke-width="3"/><line x1="-8" y1="2" x2="8" y2="2" stroke="${c}" stroke-width="3"/><line x1="-8" y1="12" x2="2" y2="12" stroke="${c}" stroke-width="3"/>`;
+  if(k===3) return `<rect x="-22" y="-16" width="44" height="32" rx="6" fill="none" stroke="${c}" stroke-width="4"/><path d="M-6 -8 L10 0 L-6 8 Z" fill="${c}"/>`;
+  return `<path d="M-14 -20 H8 L16 -12 V20 H-14 Z" fill="none" stroke="${c}" stroke-width="4"/><circle cx="1" cy="4" r="7" fill="none" stroke="${c}" stroke-width="3"/>`;
+}
+function ideate(u){
+  const TOOLS=['搜尋網頁','查課綱','翻筆記庫','看教學影片','讀研究'];
+  const hx=560, hy=300, cx0=1140, cy0=440, rad=230;
+  const tpos=TOOLS.map((_,k)=>{const a=(-90+k*72)*Math.PI/180;return [cx0+rad*Math.cos(a),cy0+rad*Math.sin(a)]});
+  let g=teacher(200,800,1,0.9);
+  g+=`<g opacity="${ease(P(u,0.2,0.8))}"><path d="M120 580 Q110 490 200 480 H560 Q620 480 620 535 V560 Q620 615 560 615 H230 L160 660 Z" fill="none" stroke="var(--chalk)" stroke-width="4"/>
+    <text x="220" y="560" class="t-chalk" style="font-size:32px">${typed('倍數單元怎麼引起動機？',P(u,0.6,2.4))}</text></g>`;
+  g+=helper(hx,hy,'var(--orange)','協助發想',ease(P(u,2,2.6)));
+  // 階段一：派出工具四處找資料
+  const search=P(u,3.4,6.6), gone=P(u,6.6,7.4);
+  TOOLS.forEach((name,k)=>{
+    const [tx,ty]=tpos[k];
+    const ln=ease(P(u,2.6+k*0.25,3.3+k*0.25));
+    const o=ln*(1-gone);
+    if(o<=0) return;
+    g+=`<line x1="${hx+50}" y1="${hy-20}" x2="${lerp(hx+50,tx,ln)}" y2="${lerp(hy-20,ty,ln)}" stroke="var(--orange)" stroke-width="3" stroke-dasharray="8 10" stroke-dashoffset="${-u*40}" opacity="${o*0.7}"/>`;
+    const spin=(u*300+k*70)%360, busy=search>0&&search<1;
+    g+=`<g transform="translate(${tx} ${ty})" opacity="${o}">
+      <circle r="50" fill="var(--board)" stroke="var(--chalk)" stroke-width="4"/>
+      ${busy?`<path d="M0 -60 A60 60 0 0 1 52 -30" fill="none" stroke="var(--yellow)" stroke-width="6" stroke-linecap="round" transform="rotate(${spin})"/>`:''}
+      ${toolIcon(k,'var(--chalk)')}
+      <text y="88" text-anchor="middle" class="t-chalk" style="font-size:26px">${esc(name)}</text></g>`;
+  });
+  if(u>=3.2&&u<7){
+    const k=Math.floor((u-3.2)*1.6)%TOOLS.length;
+    g+=`<text x="${hx}" y="${hy+120}" text-anchor="middle" class="t-body" style="font-size:22px;fill:var(--yellow)" opacity="${1-P(u,6.4,7)}">正在使用：${esc(TOOLS[k])}…</text>`;
+  }
+  // 階段二：點子從各工具飛回成卡片
+  const ideas=['跳格子數 2 的倍數','月曆上圈圈看','買文具算找零','拍手節奏遊戲','倍數接龍','樓梯編號找規律','撲克牌分組','時鐘上的 5 倍數'];
+  const pick=new Set([1,4]);
+  const sel=P(u,9.4,10.2);
+  ideas.forEach((s,i)=>{
+    const k=i%TOOLS.length, [sx,sy]=tpos[k];
+    const x=ease(P(u,6.8+i*0.25,7.6+i*0.25));
+    if(x<=0) return;
+    const col=i%2,row=Math.floor(i/2);
+    const tx=lerp(sx-190,760+col*400,x), ty=lerp(sy-43,130+row*150,x);
+    const chosen=pick.has(i), on=chosen&&sel>0;
+    const o=x*(chosen?1:lerp(1,0.32,sel));
+    g+=`<g transform="translate(${tx} ${ty}) scale(${lerp(0.4,1,x)})" opacity="${o}">
+      <rect width="380" height="86" rx="10" fill="var(--board)" stroke="${on?'var(--yellow)':'var(--orange)'}" stroke-width="${on?5:3}"/>
+      <text x="22" y="28" class="t-body" style="font-size:17px;fill:var(--chalk-dim)">來源：${esc(TOOLS[k])}</text>
+      <text x="22" y="68" class="t-chalk" style="font-size:28px;fill:${on?'var(--yellow)':'var(--chalk)'}">${esc(s)}</text>
+      ${chosen?`<path d="M330 34 l12 14 l22 -26" fill="none" stroke="var(--yellow)" stroke-width="6" stroke-linecap="round" opacity="${sel}"/>`:''}</g>`;
+  });
+  g+=`<text x="1120" y="815" text-anchor="middle" class="t-chalk" style="font-size:36px;fill:var(--yellow)" opacity="${ease(P(u,10.8,11.8))}">AI 負責四處找資料，老師負責挑</text>`;
+  return g;
+}
+function analyze(u){
+  // 路網：三條線在中央轉乘站交會（示意）
+  const LINES=[
+    {c:'var(--orange)',name:'路線 A',pts:[[200,260],[600,260],[800,460],[1400,460]],lab:[56,268]},
+    {c:'var(--blue)',  name:'路線 B',pts:[[200,660],[600,660],[800,460],[1000,260],[1400,260]],lab:[56,668]},
+    {c:'var(--green)', name:'路線 C',pts:[[800,170],[800,660]],lab:[830,165]}
+  ];
+  const ST=[['書單',240,260,0],['作者',420,260,0],['主題',600,260,0],['閱讀策略',800,460,9],['學習單',1050,460,0],['心得',1300,460,0],
+    ['週次表',240,660,1],['段考範圍',440,660,1],['提問單',1000,260,1],['評量規準',1200,260,1],['班級回饋',1400,260,1],
+    ['圖書館',800,200,2],['讀書會',800,330,2],['文體',800,600,2]];
+  const sort=ease(P(u,4.4,8)), draw=ease(P(u,5.2,8.6)), swap=P(u,8,8.8);
+  let g=`<text x="800" y="90" text-anchor="middle" class="t-chalk" style="font-size:46px" opacity="${1-P(u,4,4.6)}">一大堆雜亂的備課資料</text>
+    <text x="800" y="90" text-anchor="middle" class="t-chalk" style="font-size:46px;fill:var(--yellow)" opacity="${ease(P(u,8.6,9.4))}">整理成看得懂的路網</text>`;
+  LINES.forEach(L=>{
+    g+=`<polyline points="${L.pts.map(p=>p.join(' ')).join(' ')}" fill="none" stroke="${L.c}" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="${1-draw}" opacity="${draw>0?1:0}"/>
+      <text x="${L.lab[0]}" y="${L.lab[1]}" class="t-body" style="font-size:22px;font-weight:700;fill:${L.c}" opacity="${ease(P(u,8.4,9))}">${L.name}</text>`;
+  });
+  ST.forEach((s,i)=>{
+    const appear=ease(P(u,0.3+i*0.18,0.8+i*0.18));
+    const mx=150+rnd(i,1)*1200, my=170+rnd(i,2)*520, rot=(rnd(i,3)-0.5)*36;
+    const transfer=s[3]===9, vertical=s[3]===2;
+    const lx=vertical?s[1]+30:s[1], ly=vertical?s[2]+8:(s[3]===1&&s[2]>600?s[2]+50:s[2]-28);
+    const cx=lerp(mx,s[1],sort), cy=lerp(my,s[2],sort);
+    // 卡片（雜亂）→ 站點（整齊）
+    g+=`<g transform="translate(${cx} ${cy}) rotate(${lerp(rot,0,sort)})" opacity="${appear*(1-swap)}">
+      <rect x="-78" y="-26" width="156" height="52" rx="8" fill="var(--board)" stroke="var(--chalk-dim)" stroke-width="3"/>
+      <text x="0" y="10" text-anchor="middle" class="t-chalk" style="font-size:26px">${esc(s[0])}</text></g>`;
+    g+=`<g opacity="${swap}"><circle cx="${s[1]}" cy="${s[2]}" r="${transfer?24:14}" fill="var(--board)" stroke="var(--chalk)" stroke-width="${transfer?7:5}"/>
+      <text x="${transfer?s[1]+36:lx}" y="${transfer?s[2]+62:ly}" text-anchor="${vertical||transfer?'start':'middle'}" class="t-chalk" style="font-size:${transfer?30:26}px;${transfer?'fill:var(--yellow)':''}">${esc(s[0])}</text></g>`;
+  });
+  g+=helper(1300,800,'var(--green)','協助分析',ease(P(u,2.8,3.6)),0.8);
+  g+=`<text x="60" y="860" class="t-body" style="font-size:20px;fill:var(--chalk-dim)" opacity="${ease(P(u,9,9.6))}">示意圖：簡化自北園閱讀 PBL 路網圖的做法</text>`;
+  return g;
+}
+// 舊場景 s1～s7 以原本的絕對秒數撰寫，這裡換算起點後沿用
+const shift=(fn,origin)=>(t,s)=>fn(t-s.a+origin);
+const RENDER=[shift(s1,0),shift(s2,8),(t,s)=>roles(t-s.a),(t,s)=>ideate(t-s.a),(t,s)=>analyze(t-s.a),shift(s3,20),shift(s4,34),shift(s5,48),shift(s6,60),shift(s7,72)];
+
+// ===== 契約：window.seek(t) =====
+const stage=document.getElementById('stage');
+const capEl=document.getElementById('caption');
+function segIndex(t){for(let i=SEGS.length-1;i>=0;i--) if(t>=SEGS[i].a) return i; return 0}
+window.seek=async function(t){
+  t=clamp(t,0,window.DURATION);
+  const i=segIndex(t), s=SEGS[i];
+  const o=sceneOpacity(t,s,i===SEGS.length-1);
+  stage.innerHTML=`<g opacity="${o}">${RENDER[i](t,s)}</g>
+    <text x="1560" y="870" text-anchor="end" class="t-body" style="font-size:20px;fill:var(--chalk-dim)">${i+1} / ${SEGS.length}・${esc(s.name)}</text>`;
+  capEl.innerHTML=s.cap;
+  return true;
+};
+window.ready=document.fonts?document.fonts.ready.catch(()=>null):Promise.resolve();
+
+// ===== 播放器外殼（只負責呼叫 seek）=====
+const playBtn=document.getElementById('play'), scrub=document.getElementById('scrub'), timeEl=document.getElementById('time');
+const chap=document.getElementById('chapters');
+let cur=0, playing=false, last=0;
+SEGS.forEach((s,i)=>{const li=document.createElement('li');const b=document.createElement('button');b.type='button';b.textContent=`${i+1}・${s.name}`;b.onclick=()=>{pause();show(s.a)};li.appendChild(b);chap.appendChild(li)});
+function show(t){
+  cur=clamp(t,0,window.DURATION);scrub.value=cur;
+  timeEl.textContent=`${cur.toFixed(1)} / ${window.DURATION.toFixed(1)}`;
+  window.seek(cur);
+  const i=segIndex(cur);[...chap.querySelectorAll('button')].forEach((b,j)=>b.setAttribute('aria-current',j===i?'true':'false'));
+}
+function frame(now){if(!playing)return;cur+=(now-last)/1000;last=now;if(cur>=window.DURATION){cur=window.DURATION;pause()}show(cur);if(playing)requestAnimationFrame(frame)}
+function play(){if(cur>=window.DURATION-0.05)cur=0;playing=true;playBtn.textContent='暫停';last=performance.now();requestAnimationFrame(frame)}
+function pause(){playing=false;playBtn.textContent='播放'}
+playBtn.onclick=()=>playing?pause():play();
+scrub.oninput=()=>{pause();show(parseFloat(scrub.value))};
+document.getElementById('prev').onclick=()=>{poster=false;pause();const i=segIndex(cur-0.6);show(SEGS[i].a)};
+document.getElementById('next').onclick=()=>{poster=false;pause();const i=segIndex(cur)+1;show(i<SEGS.length?SEGS[i].a:window.DURATION)};
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'&&e.key!==' ')return;
+  if(e.key===' '&&e.target.tagName==='BUTTON'&&e.target!==playBtn)return;
+  if(e.key===' '){e.preventDefault();playBtn.click()}
+  else if(e.key==='ArrowRight'){document.getElementById('next').click()}
+  else if(e.key==='ArrowLeft'){document.getElementById('prev').click()}
+});
+// 開啟時先停在開場完成的畫面（不自動播放），按播放從頭開始
+let poster=true;
+const POSTER_T=7.5;
+show(POSTER_T);
+playBtn.onclick=()=>{if(poster){poster=false;cur=0}playing?pause():play()};
+scrub.addEventListener('input',()=>{poster=false});
+chap.addEventListener('click',()=>{poster=false});
+window.ready.then(()=>show(cur));
+</script>
+
+</html>

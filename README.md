@@ -27,6 +27,7 @@
 | **hook 事件流程（session.start / command.run / prompt.submit）** | [05](lessons/05-claude-code-mod-hook-flow.md) §3–§4 | middleware、`next(e)`、context 注入 |
 | plugin 狀態保存與測試 | [05](lessons/05-claude-code-mod-hook-flow.md) §5–§6 | atom、claude-code/testing |
 | 瀏覽器端小模型、離線去個資化、教師工作台 | [06 其他 LLM 專案](lessons/06-related-llm-projects.md) | WebLLM、Transformers.js、teacher_UI |
+| **跟老師介紹 AI 怎麼用（教師研習開場動畫）** | [老師當導演（網頁動畫）](https://bai-collab.github.io/llm_teach/animations/teacher-as-director/)｜[原始檔](animations/teacher-as-director/index.html) | AI 五種角色、四處找資料、路網圖整理、換人檢查、錯誤筆記本 |
 
 ## 📚 建議講課順序
 
@@ -46,13 +47,15 @@ flowchart LR
 - **只有 1 堂課**：01 → 07（§1、§6）→ 02（§2、§5）
 - **講 Agent 基本架構**：07 全篇（可直接投影 `references/ai_agent_architecture/` 的互動 HTML）
 - **想講 Hook 實作**：07 §6 → 05 全篇（附決策流程圖、測試、練習題）
-- **教師研習**：01 → 03 → 04 §3（Human Gate）→ 06 teacher_UI
+- **教師研習**：先放 [老師當導演](https://bai-collab.github.io/llm_teach/animations/teacher-as-director/) 動畫（約 2 分鐘，可逐段停下解說）→ 01 → 03 → 04 §3（Human Gate）→ 06 teacher_UI
 
 ## 🗂️ 目錄
 
 ```text
 llm_teach/
 ├─ README.md                         # ← 你在這裡：主題索引
+├─ animations/                       # 教學動畫（單檔 HTML，GitHub Pages 可直接播放）
+│  └─ teacher-as-director/index.html # 老師當導演：跟 AI 一起備課（123 秒・10 段）
 ├─ lessons/                          # 講義（Markdown，GitHub 上可直接看 Mermaid 圖）
 │  ├─ 01-what-is-a-harness.md
 │  ├─ 02-local-harness-adaptive-loop.md
