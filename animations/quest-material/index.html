@@ -245,48 +245,163 @@ function q8(u){
   g+=teacher(800,830,ease(P(u,3,3.8)),0.8);
   return g;
 }
-// ===== 3D 場景（three.js；每格只由 t 決定）=====
+const rnd=(i,k)=>{const x=Math.sin(i*12.9898+k*78.233)*43758.5453;return x-Math.floor(x)}; // 固定種子
+// ===== 3D 場景（three.js 立體地形箱庭；每格只由 t 決定）=====
 const THREE_OK=(()=>{try{return !!window.THREE&&!!document.createElement('canvas').getContext('webgl')}catch(e){return false}})();
 let R3=null;
+const SEA_X=-52, SEA_LEVEL=0.6, W3=140, D3=90, NX=140, NZ=90, BOTTOM=-14;
+// 河道（俯視 x,z）：從東邊山區流到西邊海
+const RIVER2D=[[66,-10],[52,-16],[38,-8],[24,2],[10,8],[-6,4],[-20,-6],[-34,-4],[-46,4],[-58,2],[-68,0]];
+function smooth01(a,b,x){const k=clamp((x-a)/(b-a),0,1);return k*k*(3-2*k)}
+function baseH(x,z){
+  const east=Math.max(0,(x+12)/72);
+  let h=Math.pow(Math.min(1,east),1.5)*27;
+  h+=(Math.sin(x*0.19+z*0.13)+Math.sin(z*0.27-x*0.09)+0.6*Math.sin(x*0.41+z*0.37))*1.9*Math.min(1,east*1.5);
+  h+=0.35*Math.sin(x*0.11)*Math.cos(z*0.13)+1.3;
+  return lerp(h,-2,smooth01(SEA_X+6,SEA_X-4,x));
+}
+let RIVER_PTS=null;
+function riverPts(){
+  if(RIVER_PTS) return RIVER_PTS;
+  const c=new THREE.CatmullRomCurve3(RIVER2D.map(p=>new THREE.Vector3(p[0],0,p[1])));
+  RIVER_PTS=c.getSpacedPoints(240);return RIVER_PTS;
+}
+function riverDist(x,z){let best=1e9,k=0;const P2=riverPts();for(let i=0;i<P2.length;i++){const dx=P2[i].x-x,dz=P2[i].z-z,d=dx*dx+dz*dz;if(d<best){best=d;k=i}}return [Math.sqrt(best),k/(P2.length-1)]}
+function riverW(f){return lerp(1.3,3.4,f)}
 function terrainH(x,z){
-  // 東（+x）高、西（-x）低，加上固定的起伏
-  const east=Math.max(0,(x+10)/70); const base=Math.pow(Math.min(1,east),1.6)*26;
-  const ridges=(Math.sin(x*0.17+z*0.11)+Math.sin(z*0.23-x*0.07))*1.6*Math.min(1,east*1.4);
-  return Math.max(0.3,0.6+base+ridges);
+  const h=baseH(x,z); if(x<SEA_X-2) return h;
+  const [d,f]=riverDist(x,z), w=riverW(f)+2.2;
+  return d<w?lerp(h,Math.min(h,Math.max(SEA_LEVEL-0.4,h*0.55)-1.4),Math.pow(1-d/w,1.4)):h;
+}
+const HEX=s=>new THREE.Color(s);
+function waterMat(mode){
+  return new THREE.ShaderMaterial({transparent:true,depthWrite:false,
+    uniforms:{uTime:{value:0},uMode:{value:mode}},
+    vertexShader:`varying vec2 vUv;varying vec3 vP;void main(){vUv=uv;vec4 w=modelMatrix*vec4(position,1.0);vP=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}`,
+    fragmentShader:`uniform float uTime;uniform float uMode;varying vec2 vUv;varying vec3 vP;
+      void main(){
+        vec3 deep=vec3(0.13,0.42,0.60), shallow=vec3(0.45,0.80,0.86);
+        float edge, ripple;
+        if(uMode<0.5){ edge=abs(vUv.y-0.5)*2.0; ripple=sin(vUv.x*220.0-uTime*5.0+sin(vUv.y*6.28)*2.0); }
+        else { edge=0.35+0.25*sin(vP.x*0.15+vP.z*0.1); ripple=sin(vP.x*0.9+uTime*1.6)*sin(vP.z*0.8-uTime*1.2); }
+        vec3 c=mix(deep,shallow,edge*0.85);
+        c+=vec3(0.9)*smoothstep(0.82,1.0,ripple)*0.22;
+        gl_FragColor=vec4(c,uMode<0.5?0.95:0.78);
+      }`});
 }
 function init3D(){
   if(R3||!THREE_OK) return R3;
   const canvas=document.getElementById('three');
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
   renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   const scene=new THREE.Scene(); scene.background=new THREE.Color(0x23392f);
-  const camera=new THREE.PerspectiveCamera(42,16/9,1,2000);
-  scene.add(new THREE.HemisphereLight(0xefe9d8,0x23392f,0.75));
-  const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(60,120,40); scene.add(sun);
-  // 地形：依高度上色，每 4 單位一條深色等高線帶
-  const geo=new THREE.PlaneGeometry(140,90,140,90); geo.rotateX(-Math.PI/2);
-  const pos=geo.attributes.position, colors=[];
-  const lo=new THREE.Color(0x8fd18a), mid=new THREE.Color(0xc9a46a), hi=new THREE.Color(0xefe9d8), line=new THREE.Color(0x3a4a30);
-  for(let i=0;i<pos.count;i++){
-    const x=pos.getX(i), z=pos.getZ(i), h=terrainH(x,z); pos.setY(i,h);
-    const c=h<10?lo.clone().lerp(mid,h/10):mid.clone().lerp(hi,Math.min(1,(h-10)/18));
-    const band=(h%4)/4; if(h>1.2&&band<0.12) c.lerp(line,0.55);
-    colors.push(c.r,c.g,c.b);
+  const camera=new THREE.PerspectiveCamera(36,16/9,1,2000);
+  scene.add(new THREE.HemisphereLight(0xdcefff,0x5a4a32,0.62));
+  const sun=new THREE.DirectionalLight(0xfff0d8,0.95); sun.position.set(70,110,55); sun.castShadow=true;
+  sun.shadow.mapSize.set(2048,2048); Object.assign(sun.shadow.camera,{left:-110,right:110,top:90,bottom:-90,near:10,far:400}); sun.shadow.bias=-0.0006;
+  scene.add(sun);
+  // 高度表（地形、等高線共用）
+  const H=[];for(let j=0;j<=NZ;j++){H.push([]);for(let i=0;i<=NX;i++){const x=-W3/2+i*W3/NX,z=-D3/2+j*D3/NZ;H[j].push(terrainH(x,z))}}
+  // 地形：低多邊形（非索引、平面著色），依高度、坡度、田區上色
+  const pos=[],col=[];
+  const cPlain=['#9cc95c','#b5d36b','#87b94f','#a9cf86'].map(HEX), cForest=HEX('#3f7a45'), cForest2=HEX('#58904d'), cRock=HEX('#9a8c76'), cPeak=HEX('#a8a48c'), cSand=HEX('#e3cf98'), cBank=HEX('#7d9a55');
+  const colorAt=(x,z,h,slope)=>{
+    if(x<SEA_X+3&&h<SEA_LEVEL+1.2) return cSand;
+    if(h<4.2){const [d]=x>SEA_X?riverDist(x,z):[99];if(d<riverW(0.5)+1.2)return cBank;const id=Math.abs(Math.floor((x+200)/7)+Math.floor((z+200)/5)*3)%4;return cPlain[id]}
+    if(h>25) return cPeak;
+    if(slope>0.9) return cRock;
+    return rnd(Math.floor(x),Math.floor(z))>0.5?cForest:cForest2;
+  };
+  for(let j=0;j<NZ;j++)for(let i=0;i<NX;i++){
+    const x0=-W3/2+i*W3/NX,z0=-D3/2+j*D3/NZ,x1=x0+W3/NX,z1=z0+D3/NZ;
+    const q=[[x0,H[j][i],z0],[x1,H[j][i+1],z0],[x1,H[j+1][i+1],z1],[x0,H[j+1][i],z1]];
+    for(const tri of [[0,3,1],[1,3,2]]){
+      const a=q[tri[0]],b=q[tri[1]],c=q[tri[2]];
+      const hm=(a[1]+b[1]+c[1])/3, slope=Math.max(Math.abs(a[1]-b[1]),Math.abs(b[1]-c[1]),Math.abs(a[1]-c[1]));
+      const cc=colorAt((a[0]+b[0]+c[0])/3,(a[2]+b[2]+c[2])/3,hm,slope);
+      for(const v of [a,b,c]){pos.push(v[0],v[1],v[2]);col.push(cc.r,cc.g,cc.b)}
+    }
   }
-  geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3)); geo.computeVertexNormals();
-  scene.add(new THREE.Mesh(geo,new THREE.MeshLambertMaterial({vertexColors:true})));
-  // 海
-  const sea=new THREE.Mesh(new THREE.PlaneGeometry(60,90),new THREE.MeshLambertMaterial({color:0x2f6f8f}));
-  sea.rotation.x=-Math.PI/2; sea.position.set(-98,0.25,0); scene.add(sea);
-  // 河川：從東邊山區流到西邊海
-  const pts=[[62,-6],[44,-14],[28,-8],[12,4],[-4,10],[-22,4],[-40,-6],[-58,-2],[-72,0]].map(p=>new THREE.Vector3(p[0],terrainH(p[0],p[1])+0.5,p[1]));
-  const curve=new THREE.CatmullRomCurve3(pts);
-  scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve,120,0.9,8,false),new THREE.MeshLambertMaterial({color:0x7fb6d9})));
-  const drops=[]; for(let k=0;k<24;k++){const m=new THREE.Mesh(new THREE.SphereGeometry(0.75,10,10),new THREE.MeshBasicMaterial({color:0xefe9d8}));scene.add(m);drops.push(m)}
+  const tg=new THREE.BufferGeometry();tg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));tg.setAttribute('color',new THREE.Float32BufferAttribute(col,3));tg.computeVertexNormals();
+  const terrain=new THREE.Mesh(tg,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:0.95}));terrain.receiveShadow=true;terrain.castShadow=true;scene.add(terrain);
+  // 箱庭側面：土層剖面
+  const wp=[],wc=[],LAY=[[-2.5,'#6b4a2f'],[-6,'#8a6440'],[-9.5,'#a77d4f'],[BOTTOM,'#5e4630']].map(l=>[l[0],HEX(l[1])]);
+  const edge=[];for(let i=0;i<=NX;i++)edge.push([i,0]);for(let j=1;j<=NZ;j++)edge.push([NX,j]);for(let i=NX-1;i>=0;i--)edge.push([i,NZ]);for(let j=NZ-1;j>=1;j--)edge.push([0,j]);edge.push([0,0]);
+  for(let k=0;k<edge.length-1;k++){
+    const [i0,j0]=edge[k],[i1,j1]=edge[k+1];
+    const x0=-W3/2+i0*W3/NX,z0=-D3/2+j0*D3/NZ,x1=-W3/2+i1*W3/NX,z1=-D3/2+j1*D3/NZ;
+    let top0=H[j0][i0],top1=H[j1][i1];
+    for(const [ly,c] of LAY){
+      const b0=Math.min(top0,ly),b1=Math.min(top1,ly);
+      if(top0>b0||top1>b1){
+        wp.push(x0,top0,z0, x0,b0,z0, x1,top1,z1,  x1,top1,z1, x0,b0,z0, x1,b1,z1);
+        for(let n=0;n<6;n++)wc.push(c.r,c.g,c.b);
+      }
+      top0=b0;top1=b1;
+    }
+  }
+  const wg=new THREE.BufferGeometry();wg.setAttribute('position',new THREE.Float32BufferAttribute(wp,3));wg.setAttribute('color',new THREE.Float32BufferAttribute(wc,3));wg.computeVertexNormals();
+  scene.add(new THREE.Mesh(wg,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,side:THREE.DoubleSide,roughness:1})));
+  // 地面陰影
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(420,320),new THREE.ShadowMaterial({opacity:0.32}));ground.rotation.x=-Math.PI/2;ground.position.y=BOTTOM-0.05;ground.receiveShadow=true;scene.add(ground);
+  // 海：半透明水塊（看得到海底）＋會動的水面
+  const seaW=SEA_X+W3/2+2, seaCx=-W3/2+seaW/2;
+  const seaBox=new THREE.Mesh(new THREE.BoxGeometry(seaW,SEA_LEVEL-BOTTOM,D3),new THREE.MeshStandardMaterial({color:0x2f8fbf,transparent:true,opacity:0.42,roughness:0.2,depthWrite:false}));
+  seaBox.position.set(seaCx,(SEA_LEVEL+BOTTOM)/2,0);scene.add(seaBox);
+  const seaTop=new THREE.Mesh(new THREE.PlaneGeometry(seaW,D3),waterMat(1));seaTop.rotation.x=-Math.PI/2;seaTop.position.set(seaCx,SEA_LEVEL+0.02,0);scene.add(seaTop);
+  // 河：沿河道的水面帶
+  const rp=[],ruv=[],ridx=[],P2=riverPts();
+  for(let k=0;k<P2.length;k++){
+    const a=P2[Math.max(0,k-1)],b=P2[Math.min(P2.length-1,k+1)],tx=b.x-a.x,tz=b.z-a.z,l=Math.hypot(tx,tz)||1,nx=-tz/l,nz=tx/l,f=k/(P2.length-1),w=riverW(f);
+    const y=Math.max(SEA_LEVEL+0.05,terrainH(P2[k].x,P2[k].z)+0.45);
+    rp.push(P2[k].x+nx*w,y,P2[k].z+nz*w,P2[k].x-nx*w,y,P2[k].z-nz*w);ruv.push(f,0,f,1);
+    if(k<P2.length-1){const o=k*2;ridx.push(o,o+1,o+2,o+1,o+3,o+2)}
+  }
+  const rg=new THREE.BufferGeometry();rg.setAttribute('position',new THREE.Float32BufferAttribute(rp,3));rg.setAttribute('uv',new THREE.Float32BufferAttribute(ruv,2));rg.setIndex(ridx);
+  const riverMat=waterMat(0);const river=new THREE.Mesh(rg,riverMat);river.renderOrder=2;scene.add(river);
+  // 森林與房屋（InstancedMesh，位置用固定種子）
+  const treeGeo=new THREE.ConeGeometry(1.15,3.4,6);treeGeo.translate(0,1.7,0);
+  const trees=new THREE.InstancedMesh(treeGeo,new THREE.MeshStandardMaterial({flatShading:true,roughness:0.9}),900);
+  const m4=new THREE.Matrix4(),q4=new THREE.Quaternion(),s3=new THREE.Vector3(),p3=new THREE.Vector3(),tc=new THREE.Color();
+  let nT=0;
+  for(let z=-42;z<=42&&nT<900;z+=2.4)for(let x=-30;x<=68&&nT<900;x+=2.4){
+    const xi=x+(rnd(x,z)-0.5)*1.8, zi=z+(rnd(z,x)-0.5)*1.8, h=terrainH(xi,zi);
+    if(h<4.5||h>22||rnd(xi*3,zi*7)>0.62||riverDist(xi,zi)[0]<4) continue;
+    const sc=0.75+rnd(xi,zi*2)*0.6; p3.set(xi,h-0.2,zi); s3.set(sc,sc*(0.9+rnd(zi,xi)*0.5),sc);
+    m4.compose(p3,q4,s3); trees.setMatrixAt(nT,m4); tc.set(rnd(xi*5,zi)>0.5?0x2f6b3a:0x4c8a45); trees.setColorAt(nT,tc); nT++;
+  }
+  trees.count=nT; trees.castShadow=true; trees.receiveShadow=true; scene.add(trees);
+  const bodyGeo=new THREE.BoxGeometry(1.8,1.3,1.6);bodyGeo.translate(0,0.65,0);
+  const roofGeo=new THREE.ConeGeometry(1.45,1,4);roofGeo.rotateY(Math.PI/4);roofGeo.translate(0,1.8,0);
+  const bodies=new THREE.InstancedMesh(bodyGeo,new THREE.MeshStandardMaterial({color:0xf3ead6,flatShading:true}),60);
+  const roofs=new THREE.InstancedMesh(roofGeo,new THREE.MeshStandardMaterial({flatShading:true}),60);
+  let nH=0;
+  for(let k=0;k<400&&nH<60;k++){
+    const x=-44+rnd(k,11)*34, z=-26+rnd(k,17)*52, h=terrainH(x,z), d=riverDist(x,z)[0];
+    if(h>3.6||d<4.5||d>16) continue;
+    p3.set(x,h-0.05,z); q4.setFromAxisAngle(new THREE.Vector3(0,1,0),rnd(k,5)*Math.PI); s3.set(1,1,1);
+    m4.compose(p3,q4,s3); bodies.setMatrixAt(nH,m4); roofs.setMatrixAt(nH,m4);
+    tc.set([0xc8553d,0xd9783f,0x8f4a3a][nH%3]); roofs.setColorAt(nH,tc); nH++;
+  }
+  bodies.count=roofs.count=nH; for(const m of [bodies,roofs]){m.castShadow=true;m.receiveShadow=true;scene.add(m)}
+  q4.identity();
+  // 等高線（marching squares，每 3 公尺一條，只在地形段淡入）
+  const cp=[];
+  for(let L=3;L<=24;L+=3)for(let j=0;j<NZ;j++)for(let i=0;i<NX;i++){
+    const x0=-W3/2+i*W3/NX,z0=-D3/2+j*D3/NZ,dx=W3/NX,dz=D3/NZ;
+    const v=[H[j][i],H[j][i+1],H[j+1][i+1],H[j+1][i]], cpts=[[x0,z0],[x0+dx,z0],[x0+dx,z0+dz],[x0,z0+dz]], cut=[];
+    for(let e=0;e<4;e++){const a=v[e],b=v[(e+1)%4];if((a<L)!==(b<L)){const k=(L-a)/(b-a),pa=cpts[e],pb=cpts[(e+1)%4];cut.push([lerp(pa[0],pb[0],k),lerp(pa[1],pb[1],k)])}}
+    if(cut.length>=2){cp.push(cut[0][0],L+0.6,cut[0][1],cut[1][0],L+0.6,cut[1][1]);if(cut.length===4)cp.push(cut[2][0],L+0.6,cut[2][1],cut[3][0],L+0.6,cut[3][1])}
+  }
+  const cg=new THREE.BufferGeometry();cg.setAttribute('position',new THREE.Float32BufferAttribute(cp,3));
+  const contour=new THREE.LineSegments(cg,new THREE.LineBasicMaterial({color:0xf2c14e,transparent:true,opacity:0}));scene.add(contour);
+  // 雲（會在地上投下影子）
+  const clouds=[];const cm=new THREE.MeshStandardMaterial({color:0xffffff,flatShading:true,roughness:1});
+  for(let c=0;c<5;c++){const g=new THREE.Group();for(let b=0;b<4;b++){const s=new THREE.Mesh(new THREE.IcosahedronGeometry(2.4+rnd(c,b)*1.6,0),cm);s.position.set(b*2.6-4,rnd(b,c)*1.2,(rnd(c*3,b)-0.5)*2.4);s.castShadow=true;g.add(s)}scene.add(g);clouds.push(g)}
   // 淹水水面
-  const flood=new THREE.Mesh(new THREE.PlaneGeometry(140,90),new THREE.MeshLambertMaterial({color:0x5a9fd6,transparent:true,opacity:0.6}));
-  flood.rotation.x=-Math.PI/2; scene.add(flood);
-  R3={renderer,scene,camera,curve,drops,flood,canvas};
+  const flood=new THREE.Mesh(new THREE.PlaneGeometry(W3,D3),waterMat(1));flood.rotation.x=-Math.PI/2;flood.renderOrder=3;scene.add(flood);
+  R3={renderer,scene,camera,canvas,riverMat,seaTop,flood,contour,clouds};
   resize3D();
   return R3;
 }
@@ -296,24 +411,27 @@ function resize3D(){
   R3.renderer.setSize(w,h,false);
 }
 window.addEventListener('resize',()=>{resize3D();window.seek(cur)});
-function camAt(px,py,pz){R3.camera.position.set(px,py,pz);R3.camera.lookAt(0,4,0);R3.camera.updateMatrixWorld()}
+function camAt(px,py,pz,ly=-2){R3.camera.position.set(px,py,pz);R3.camera.lookAt(0,ly,0);R3.camera.updateMatrixWorld()}
 // 3D 點投影到 1600×900 舞台座標
 function proj(x,y,z){const v=new THREE.Vector3(x,y,z).project(R3.camera);return [(v.x+1)*800,(1-v.y)*450,v.z<1]}
 function render3D(t,mode){
   const r=init3D(); if(!r) return;
   const u=mode==='terrain'?t-46:t-64;
   if(mode==='terrain'){
-    // 先由正上方俯視（像 2D 地圖），再傾斜、環繞
-    const tilt=ease(P(u,0.6,4)), ang=lerp(-0.9,0.7,ease(P(u,4,17)));
-    const rad=lerp(8,112,tilt), hgt=lerp(200,62,tilt);
+    // 先由正上方俯視（像 2D 地圖），再傾斜成立體箱庭、慢慢環繞
+    const tilt=ease(P(u,0.6,4.2)), ang=lerp(-0.75,0.55,ease(P(u,4,17.5)));
+    const rad=lerp(6,182,tilt), hgt=lerp(250,112,tilt);
     camAt(Math.sin(ang)*rad,hgt,Math.cos(ang)*rad+0.01);
     r.flood.visible=false;
+    r.contour.material.opacity=0.85*ease(P(u,9.5,10.5));
   }else{
-    camAt(-62,52,92);
+    camAt(-112,92,142);
     r.flood.visible=true;
-    r.flood.position.y=lerp(0.2,3.4,ease(P(u,1,7)));
+    r.flood.position.y=lerp(SEA_LEVEL,4.2,ease(P(u,1,7)));
+    r.contour.material.opacity=0;
   }
-  r.drops.forEach((m,k)=>{const p=r.curve.getPoint(((k/r.drops.length)+t*0.06)%1);m.position.set(p.x,p.y+0.6,p.z)});
+  for(const m of [r.riverMat,r.seaTop.material,r.flood.material]) m.uniforms.uTime.value=t;
+  r.clouds.forEach((g,c)=>{const x=-70+((rnd(c,9)*140+t*1.4)%150);g.position.set(x,30+c*2,-40+c*14)});
   r.renderer.render(r.scene,r.camera);
 }
 function label3D(x,y,z,s,col,size=30,o=1){
@@ -330,15 +448,15 @@ function q5(u,t){
   const top=1-ease(P(u,0,1.2));
   let g=`<g opacity="${top}">${box(500,250,600,400,1,'var(--yellow)','rgba(239,233,216,.04)',14)}${txt(800,460,'2D 地圖浮起來…',40,'var(--yellow)','t-chalk','text-anchor="middle"')}</g>`;
   const lo=ease(P(u,5,6));
-  g+=label3D(52,30,-8,'東：高山',`var(--chalk)`,30,lo)+label3D(-44,3,22,'西：平原','var(--green)',30,ease(P(u,6.5,7.5)))+label3D(-60,3,-2,'河川流向海','var(--blue)',28,ease(P(u,8,9)));
+  g+=label3D(50,31,-10,'東：高山',`var(--chalk)`,30,lo)+label3D(-34,4,24,'西：平原','var(--green)',30,ease(P(u,6.5,7.5)))+label3D(-58,2,4,'河川流向海','var(--blue)',28,ease(P(u,8,9)))+label3D(28,16,26,'等高線：東邊密、西邊疏','var(--chalk)',26,ease(P(u,10.5,11.5)));
   g+=`<g opacity="${ease(P(u,10,11))}">${box(220,800,1160,64,1,'var(--yellow)','rgba(26,43,35,.85)',12)}${txt(800,843,'3D 只負責看懂空間，作答仍在 2D 關卡卡片',28,'var(--yellow)','t-chalk','text-anchor="middle"')}</g>`;
-  g+=txt(60,70,'第 2、3 關加入 3D',32,'var(--yellow)','t-chalk',`opacity="${ease(P(u,1.5,2.5))}"`);
+  g+=`<g opacity="${ease(P(u,1.5,2.5))}">${box(40,30,330,58,1,'var(--yellow)','rgba(26,43,35,.85)',12)}${txt(60,70,'第 2、3 關加入 3D',32,'var(--yellow)')}</g>`;
   return g;
 }
 function q6(u){
   if(!THREE_OK) return no3D();
-  let g=txt(60,70,'第 4 關：淹水情境',32,'var(--yellow)');
-  g+=label3D(-40,4,10,'低窪處先淹水','var(--blue)',30,ease(P(u,3.5,4.5)));
+  let g=box(40,30,320,58,1,'var(--yellow)','rgba(26,43,35,.85)',12)+txt(60,70,'第 4 關：淹水情境',32,'var(--yellow)');
+  g+=label3D(-36,4,14,'低窪處先淹水','var(--blue)',30,ease(P(u,3.5,4.5)));
   g+=`<g opacity="${ease(P(u,5,6))}">${box(220,800,1160,64,1,'var(--orange)','rgba(26,43,35,.85)',12)}${txt(800,843,'日降雨 650 mm 的情境模擬，不是即時預報',28,'var(--orange)','t-chalk','text-anchor="middle"')}</g>`;
   return g;
 }
