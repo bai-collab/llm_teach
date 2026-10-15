@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<title>闖關教材製作</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* 版面：一塊教室黑板當舞台，下方是字幕與講者用的分段控制列（刻意只用黑板單一外觀） */
+:root{
+  --board:#23392f;      /* 黑板 */
+  --board-deep:#1a2b23; /* 黑板陰影與頁面底色 */
+  --frame:#6e4c31;      /* 木框 */
+  --chalk:#efe9d8;      /* 白粉筆 */
+  --chalk-dim:#a9b3a6;  /* 擦過的粉筆 */
+  --yellow:#f2c14e;     /* 黃粉筆：重點 */
+  --orange:#e8875b;     /* 作者 AI */
+  --blue:#7fb6d9;       /* 審查 AI */
+  --green:#8fd18a;      /* 通過 */
+  --red:#e66a5c;        /* 退件 */
+  --font-chalk:"LXGW WenKai TC","Kaiti TC","DFKai-SB","BiauKai",serif;
+  --font-body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--board-deep);color:var(--chalk)}
+body{margin:0;font-family:var(--font-body);padding-inline:16px;padding-block:20px 28px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px}
+h1{font-family:var(--font-chalk);font-weight:700;font-size:clamp(1.5rem,3.2vw,2.1rem);margin:0;color:var(--chalk);text-wrap:balance}
+.sub{color:var(--chalk-dim);font-size:.95rem;margin:0}
+.board{box-sizing:border-box;position:relative;border:14px solid var(--frame);border-radius:6px;background:var(--board);box-shadow:inset 0 0 60px rgba(0,0,0,.45);max-width:100%}
+.board svg{position:relative;z-index:1;display:block;width:100%;height:auto;aspect-ratio:16/9}
+#three{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0}
+.caption{font-family:var(--font-chalk);font-size:clamp(1.05rem,2.2vw,1.45rem);line-height:1.5;min-height:2.3em;margin:0;color:var(--chalk)}
+.caption b{color:var(--yellow);font-weight:700}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+button{font:inherit;font-size:.95rem;color:var(--chalk);background:transparent;border:1.5px solid var(--chalk-dim);border-radius:999px;padding:.4em 1em;cursor:pointer}
+button:hover{border-color:var(--yellow);color:var(--yellow)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+#play{min-width:5.5em;border-color:var(--yellow);color:var(--yellow)}
+#scrub{flex:1 1 220px;min-width:0;accent-color:var(--yellow)}
+#time{font-variant-numeric:tabular-nums;color:var(--chalk-dim);font-size:.9rem;min-width:6.5em;text-align:right}
+.chapters{display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:0;list-style:none}
+.chapters button{font-size:.88rem;padding:.3em .85em;border-color:rgba(239,233,216,.25);color:var(--chalk-dim)}
+.chapters button[aria-current="true"]{border-color:var(--yellow);color:var(--yellow)}
+.note{color:var(--chalk-dim);font-size:.85rem;margin:0}
+.works h2{font-family:var(--font-chalk);font-size:1.15rem;margin:0 0 6px;color:var(--yellow)}
+.works ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 16px}
+.works li{min-width:0}
+.works a{color:var(--chalk);text-decoration-color:var(--chalk-dim);text-underline-offset:3px}
+.works a:hover{color:var(--yellow)}
+.works span{display:block;color:var(--chalk-dim);font-size:.85rem}
+/* 舞台內文字 */
+.t-chalk{font-family:var(--font-chalk);fill:var(--chalk)}
+.t-body{font-family:var(--font-body);fill:var(--chalk)}
+@media (prefers-reduced-motion: reduce){ .board{box-shadow:none} }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>闖關教材：老師用 Claude Code 做出 2D＋3D 關卡</h1>
+    <p class="sub">一分半・八段・2D 與 3D・可停在任一段解說</p>
+  </header>
+  <div class="board"><canvas id="three" aria-hidden="true"></canvas><svg id="stage" viewBox="0 0 1600 900" role="img" aria-label="闖關教材製作動畫"></svg></div>
+  <p class="caption" id="caption" aria-live="polite"></p>
+  <div class="controls">
+    <button id="prev" type="button" aria-label="上一段">上一段</button>
+    <button id="play" type="button">播放</button>
+    <button id="next" type="button" aria-label="下一段">下一段</button>
+    <input id="scrub" type="range" min="0" max="92" step="0.05" value="0" aria-label="時間軸">
+    <span id="time">0.0 / 92.0</span>
+  </div>
+  <ul class="chapters" id="chapters"></ul>
+  <p class="note">3D 以 three.js 繪製（需網路載入）；地形為示意，不是真實高程。<a href="https://bai-collab.github.io/Mini-Taiwan-Pulse/" target="_blank" rel="noopener" style="color:inherit">嘉義互動地圖</a>｜<a href="https://bai-collab.github.io/llm_teach/animations/teacher-as-director/" target="_blank" rel="noopener" style="color:inherit">老師當導演（上一支動畫）</a><br>鍵盤：空白鍵播放／暫停，左右方向鍵切換段落。畫面只由時間決定，可用 window.seek(t) 逐格輸出成影片。</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ===== 時間表（秒）=====
+window.DURATION = 92;
+const SEGS = [
+  {a:0,  b:8,  name:'開場',     cap:'課本裡的一個單元，<b>怎麼變成學生想玩的闖關？</b>'},
+  {a:8,  b:20, name:'下指令',   cap:'老師在 Claude Code 用一句話交代：<b>年級、單元、幾關、用什麼教具</b>。'},
+  {a:20, b:32, name:'先出規格', cap:'AI 先交出學習目標、關卡與回饋方式，<b>老師核准才開始做</b>。'},
+  {a:32, b:46, name:'2D 關卡',  cap:'2D 關卡卡片負責作答：<b>選錯有提示，選對拿徽章</b>。'},
+  {a:46, b:64, name:'3D 地形',  cap:'3D 只負責<b>看懂空間</b>：東邊高山、西邊平原，河川一路流向海。'},
+  {a:64, b:74, name:'3D 淹水',  cap:'淹水情境從<b>低窪處</b>開始；畫面註明這是情境模擬，<b>不是即時預報</b>。'},
+  {a:74, b:84, name:'驗收',     cap:'做完先檢查畫面結構，再實際操作，最後<b>換另一家 AI 審查</b>。'},
+  {a:84, b:92, name:'結語',     cap:'<b>老師決定學什麼</b>，AI 幫忙做出來。'}
+];
+
+// ===== 純函數工具 =====
+const clamp=(x,lo,hi)=>Math.min(hi,Math.max(lo,x));
+const P=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+const ease=x=>1-Math.pow(1-x,3);
+const back=x=>{const c=1.6;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const lerp=(a,b,x)=>a+(b-a)*x;
+const typed=(s,x)=>s.slice(0,Math.round([...s].length*clamp(x,0,1))).replace(/[<>&]/g,'');
+function sceneOpacity(t,s,last){
+  const fin=P(t,s.a,s.a+0.5), fout=last?1:1-P(t,s.b-0.4,s.b);
+  return Math.min(fin,fout);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+
+// ===== 圖形元件 =====
+function teacher(x,y,o=1,s=1){
+  return `<g transform="translate(${x} ${y}) scale(${s})" opacity="${o}">
+    <circle cx="0" cy="-118" r="34" fill="none" stroke="var(--chalk)" stroke-width="5"/>
+    <path d="M-12 -122 q4 -5 8 0 M8 -122 q4 -5 8 0" stroke="var(--chalk)" stroke-width="3" fill="none"/>
+    <path d="M-8 -104 q8 7 16 0" stroke="var(--chalk)" stroke-width="3" fill="none"/>
+    <path d="M-48 0 Q-48 -78 0 -80 Q48 -78 48 0 Z" fill="none" stroke="var(--chalk)" stroke-width="5"/>
+    <rect x="-34" y="-60" width="68" height="26" rx="6" fill="var(--yellow)"/>
+    <text x="0" y="-41" text-anchor="middle" class="t-body" style="font-size:17px;font-weight:700;fill:var(--board-deep)">導演</text>
+  </g>`;
+}
+function helper(x,y,color,label,o=1,s=1,tag=''){
+  return `<g transform="translate(${x} ${y}) scale(${s})" opacity="${o}">
+    <line x1="0" y1="-62" x2="0" y2="-82" stroke="${color}" stroke-width="4"/>
+    <circle cx="0" cy="-86" r="7" fill="${color}"/>
+    <rect x="-46" y="-62" width="92" height="74" rx="18" fill="none" stroke="${color}" stroke-width="5"/>
+    <circle cx="-16" cy="-28" r="7" fill="${color}"/><circle cx="16" cy="-28" r="7" fill="${color}"/>
+    <path d="M-12 -8 q12 8 24 0" stroke="${color}" stroke-width="3.5" fill="none"/>
+    <text x="0" y="44" text-anchor="middle" class="t-chalk" style="font-size:26px;fill:${color}">${esc(label)}</text>
+    ${tag?`<text x="0" y="72" text-anchor="middle" class="t-body" style="font-size:17px;fill:var(--chalk-dim)">${esc(tag)}</text>`:''}
+  </g>`;
+}
+function card(x,y,w,h,title,body,o=1,color='var(--chalk)'){
+  return `<g transform="translate(${x} ${y})" opacity="${o}">
+    <rect x="0" y="0" width="${w}" height="${h}" rx="10" fill="rgba(239,233,216,.06)" stroke="${color}" stroke-width="3" stroke-dasharray="2 0"/>
+    <text x="22" y="40" class="t-body" style="font-size:20px;fill:var(--chalk-dim)">${esc(title)}</text>
+    <text x="22" y="${h-28}" class="t-chalk" style="font-size:32px;fill:${color}">${esc(body)}</text>
+  </g>`;
+}
+function doc(x,y,o=1,s=1,rot=0){
+  let lines='';
+  for(let i=0;i<5;i++) lines+=`<line x1="18" y1="${36+i*22}" x2="${i===4?70:102}" y2="${36+i*22}" stroke="var(--chalk-dim)" stroke-width="4"/>`;
+  return `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})" opacity="${o}">
+    <path d="M0 0 H96 L120 24 V150 H0 Z" fill="var(--board)" stroke="var(--chalk)" stroke-width="4"/>
+    <text x="18" y="26" class="t-body" style="font-size:15px;fill:var(--yellow)">教案</text>${lines}
+  </g>`;
+}
+function stamp(x,y,text,color,o,s,rot=-12){
+  return `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})" opacity="${o}">
+    <rect x="-110" y="-38" width="220" height="76" rx="10" fill="none" stroke="${color}" stroke-width="6"/>
+    <text x="0" y="14" text-anchor="middle" class="t-chalk" style="font-size:40px;font-weight:700;fill:${color}">${esc(text)}</text>
+  </g>`;
+}
+
+// ===== 共用小元件 =====
+const box=(x,y,w,h,o=1,stroke='var(--chalk-dim)',fill='rgba(239,233,216,.04)',r=10)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}" stroke="${stroke}" stroke-width="3" opacity="${o}"/>`;
+const txt=(x,y,s,size=26,fill='var(--chalk)',cls='t-chalk',extra='')=>`<text x="${x}" y="${y}" class="${cls}" style="font-size:${size}px;fill:${fill}" ${extra}>${esc(s)}</text>`;
+function questCard(x,y,s,o=1){
+  return `<g transform="translate(${x} ${y}) scale(${s})" opacity="${o}">${box(-170,-120,340,240,1,'var(--yellow)','var(--board)',16)}
+    ${txt(0,-76,'第 1 關',26,'var(--chalk-dim)','t-body','text-anchor="middle"')}${txt(0,-6,'地圖偵探',44,'var(--yellow)','t-chalk','text-anchor="middle"')}
+    <circle cx="0" cy="62" r="36" fill="none" stroke="var(--yellow)" stroke-width="5"/>${txt(0,74,'徽',32,'var(--yellow)','t-chalk','text-anchor="middle"')}</g>`;
+}
+// ===== 2D 場景（u＝本段經過秒數）=====
+function q1(u){
+  let g=`<text x="800" y="140" text-anchor="middle" class="t-chalk" style="font-size:56px;font-weight:700">${typed('一個單元，怎麼變成闖關？',P(u,0.2,2.2))}</text>`;
+  const pg=ease(P(u,1,1.8));
+  let lines='';for(let i=0;i<7;i++) lines+=`<line x1="40" y1="${150+i*40}" x2="${i===6?200:340}" y2="${150+i*40}" stroke="var(--chalk-dim)" stroke-width="4"/>`;
+  g+=`<g transform="translate(240 300)" opacity="${pg}"><rect width="380" height="440" rx="8" fill="var(--board)" stroke="var(--chalk)" stroke-width="4"/>
+    ${txt(40,60,'4 上・單元一',26,'var(--chalk-dim)','t-body')}${txt(40,112,'家鄉的自然環境',32,'var(--chalk)')}${lines}</g>`;
+  const ar=ease(P(u,3,4));
+  g+=`<path d="M660 520 H${lerp(660,880,ar)}" stroke="var(--yellow)" stroke-width="6" opacity="${ar}"/><path d="M880 500 l26 20 l-26 20" fill="none" stroke="var(--yellow)" stroke-width="6" opacity="${P(u,3.8,4)}"/>`;
+  const c=P(u,4,5);
+  g+=questCard(1170,520,lerp(0.6,1.2,back(c)),ease(c));
+  return g;
+}
+function q2(u){
+  let g=box(160,130,1000,560,1,'var(--chalk)','rgba(10,18,14,.65)',14);
+  g+=`<circle cx="200" cy="168" r="9" fill="var(--red)"/><circle cx="230" cy="168" r="9" fill="var(--yellow)"/><circle cx="260" cy="168" r="9" fill="var(--green)"/>`+txt(300,176,'終端機',22,'var(--chalk-dim)','t-body');
+  const L=[['$ claude',0.4,1.2,'var(--green)'],['> 把 4 上單元一做成國小四年級的五關闖關，',1.6,4.4,'var(--chalk)'],['  用嘉義互動地圖當教具。',4.4,6,'var(--chalk)']];
+  L.forEach((l,i)=>{g+=`<text x="200" y="${250+i*60}" class="t-body" style="font-size:30px;fill:${l[3]};font-family:Consolas,'Courier New',var(--font-body)">${esc(typed(l[0],P(u,l[1],l[2])))}</text>`});
+  const li=u<1.2?0:(u<4.4?1:2), shown=typed(L[li][0],P(u,L[li][1],L[li][2]));
+  const cw=[...shown].reduce((w,ch)=>w+(ch.charCodeAt(0)>255?30:16.5),0);
+  if(Math.floor(u*2)%2===0&&u<6.2) g+=`<rect x="${200+cw+4}" y="${250+li*60-26}" width="14" height="30" fill="var(--chalk)" opacity=".7"/>`;
+  g+=txt(200,520,'Claude 正在使用的技能：',24,'var(--chalk-dim)','t-body',`opacity="${ease(P(u,6.4,7))}"`);
+  [['教材轉闖關','var(--orange)'],['版面規劃','var(--blue)'],['讀教師手冊','var(--green)']].forEach((s,i)=>{
+    const o=ease(P(u,7+i*0.8,7.6+i*0.8));
+    g+=`<g opacity="${o}">${box(200+i*300,550,270,70,1,s[1],'rgba(239,233,216,.06)',35)}${txt(335+i*300,596,s[0],28,s[1],'t-chalk','text-anchor="middle"')}</g>`;
+  });
+  g+=teacher(1350,720,1,0.9);
+  return g;
+}
+function q3(u){
+  let g='';
+  const cols=[['學習目標',['看懂電子地圖','認識地形高低','知道水從哪裡來']],['五個關卡（示意）',['1 地圖偵探','2 地形觀察','3 河川追蹤','4 淹水情境','5 偵探報告']],['回饋方式',['選錯給提示','選對拿徽章','集滿五枚過關']]];
+  cols.forEach((c,i)=>{
+    const o=ease(P(u,0.3+i*1.2,1+i*1.2)), x=150+i*440;
+    g+=`<g opacity="${o}">${box(x,130,400,520,1,'var(--chalk-dim)')}${txt(x+30,190,c[0],32,'var(--yellow)')}`;
+    c[1].forEach((s,j)=>{g+=txt(x+30,260+j*72,s,28,'var(--chalk)','t-chalk',`opacity="${ease(P(u,0.8+i*1.2+j*0.25,1.2+i*1.2+j*0.25))}"`)});
+    g+='</g>';
+  });
+  const gate=ease(P(u,5.4,6.2)), ok=P(u,8.4,9);
+  const col=ok>0?'var(--green)':'var(--yellow)';
+  const pulse=ok>0?1:1+0.06*Math.sin(u*6);
+  g+=`<g transform="translate(800 760) scale(${pulse})" opacity="${gate}"><path d="M0 -56 L120 0 L0 56 L-120 0 Z" fill="var(--board)" stroke="${col}" stroke-width="6"/>
+    ${txt(0,12,ok>0?'核准':'老師核准',32,col,'t-chalk','text-anchor="middle"')}</g>`;
+  g+=teacher(1150,860,gate,0.7);
+  return g;
+}
+function q4(u){
+  let g=box(260,120,1080,640,1,'var(--yellow)','rgba(239,233,216,.04)',18);
+  g+=txt(300,180,'第 1 關：地圖偵探',36,'var(--yellow)')+txt(300,240,'想看地勢高低，要切到哪一種地圖？',32);
+  const opts=['一般地圖','衛星','地形圖'];
+  const pick1=P(u,2.5,3), pick2=P(u,7,7.5);
+  opts.forEach((o,i)=>{
+    const x=300+i*340;
+    let st='var(--chalk-dim)', fill='rgba(239,233,216,.04)';
+    if(i===1&&pick1>0&&pick2===0){st='var(--orange)';fill='rgba(232,135,91,.12)'}
+    if(i===2&&pick2>0){st='var(--green)';fill='rgba(143,209,138,.14)'}
+    g+=box(x,300,300,90,1,st,fill,45)+txt(x+150,357,o,32,'var(--chalk)','t-chalk','text-anchor="middle"');
+  });
+  // 游標
+  const cx=u<2.5?lerp(900,790,ease(P(u,1,2.5))):(u<7?lerp(790,1130,ease(P(u,5.5,7))):1130), cy=360;
+  if(u<9) g+=`<path d="M${cx} ${cy} l0 44 l12 -12 l10 22 l8 -4 l-10 -22 l18 0 Z" fill="var(--chalk)" stroke="var(--board-deep)" stroke-width="2"/>`;
+  const f1=ease(P(u,3,3.6))*(1-P(u,6.8,7.2));
+  g+=`<g opacity="${f1}">${box(300,440,1000,90,1,'var(--orange)','rgba(232,135,91,.08)')}${txt(330,498,'提示：衛星看得到房子，但看不出哪裡高、哪裡低。',28,'var(--orange)')}</g>`;
+  const f2=ease(P(u,7.6,8.2));
+  g+=`<g opacity="${f2}">${box(300,440,1000,90,1,'var(--green)','rgba(143,209,138,.08)')}${txt(330,498,'答對！地形圖用顏色和等高線表示高低。',28,'var(--green)')}</g>`;
+  const b=P(u,9,9.8);
+  if(b>0) g+=`<g transform="translate(800 650) scale(${lerp(1.6,1,ease(b))})" opacity="${ease(b)}"><circle r="62" fill="var(--board)" stroke="var(--yellow)" stroke-width="7"/>
+    ${txt(0,-6,'地圖',28,'var(--yellow)','t-chalk','text-anchor="middle"')}${txt(0,30,'偵探',28,'var(--yellow)','t-chalk','text-anchor="middle"')}</g>`;
+  return g;
+}
+function q7(u){
+  let g=txt(800,140,'交付前的三道檢查',48,'var(--chalk)','t-chalk','text-anchor="middle"');
+  [['畫面結構檢查','按鈕、題目、回饋都在對的位置'],['瀏覽器實際操作','像學生一樣點一遍五關'],['換另一家 AI 審查','作者不能自己審自己']].forEach((r,i)=>{
+    const o=ease(P(u,0.6+i*2,1.2+i*2)), ck=P(u,1.6+i*2,2.1+i*2), y=230+i*170;
+    g+=`<g opacity="${o}">${box(300,y,1000,130,1,ck>0?'var(--green)':'var(--chalk-dim)')}
+      ${txt(360,y+58,`${i+1}`,40,'var(--yellow)')}${txt(430,y+58,r[0],36)}${txt(430,y+100,r[1],24,'var(--chalk-dim)','t-body')}
+      <path d="M1210 ${y+65} l22 24 l40 -48" fill="none" stroke="var(--green)" stroke-width="9" stroke-linecap="round" opacity="${ck}"/></g>`;
+  });
+  return g;
+}
+const MAP_URL='https://bai-collab.github.io/Mini-Taiwan-Pulse/';
+function q8(u){
+  let g=`<text x="800" y="230" text-anchor="middle" class="t-chalk" style="font-size:62px;font-weight:700;fill:var(--yellow)" opacity="${ease(P(u,0.2,1.2))}">老師決定學什麼</text>
+    <text x="800" y="320" text-anchor="middle" class="t-chalk" style="font-size:52px" opacity="${ease(P(u,1,2))}">AI 幫忙做出來</text>`;
+  const l=ease(P(u,2.4,3.2));
+  g+=`<a href="${esc(MAP_URL)}" target="_blank" rel="noopener" aria-label="開啟嘉義互動地圖"><g opacity="${l}" style="cursor:pointer">${box(420,430,760,130,1,'var(--chalk)','rgba(239,233,216,.06)',14)}
+    ${txt(800,482,'本片的教具：嘉義互動地圖',24,'var(--chalk-dim)','t-body','text-anchor="middle"')}${txt(800,530,'bai-collab.github.io/Mini-Taiwan-Pulse',32,'var(--chalk)','t-body','text-anchor="middle"')}</g></a>`;
+  g+=teacher(800,830,ease(P(u,3,3.8)),0.8);
+  return g;
+}
+// ===== 3D 場景（three.js；每格只由 t 決定）=====
+const THREE_OK=(()=>{try{return !!window.THREE&&!!document.createElement('canvas').getContext('webgl')}catch(e){return false}})();
+let R3=null;
+function terrainH(x,z){
+  // 東（+x）高、西（-x）低，加上固定的起伏
+  const east=Math.max(0,(x+10)/70); const base=Math.pow(Math.min(1,east),1.6)*26;
+  const ridges=(Math.sin(x*0.17+z*0.11)+Math.sin(z*0.23-x*0.07))*1.6*Math.min(1,east*1.4);
+  return Math.max(0.3,0.6+base+ridges);
+}
+function init3D(){
+  if(R3||!THREE_OK) return R3;
+  const canvas=document.getElementById('three');
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
+  renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  const scene=new THREE.Scene(); scene.background=new THREE.Color(0x23392f);
+  const camera=new THREE.PerspectiveCamera(42,16/9,1,2000);
+  scene.add(new THREE.HemisphereLight(0xefe9d8,0x23392f,0.75));
+  const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(60,120,40); scene.add(sun);
+  // 地形：依高度上色，每 4 單位一條深色等高線帶
+  const geo=new THREE.PlaneGeometry(140,90,140,90); geo.rotateX(-Math.PI/2);
+  const pos=geo.attributes.position, colors=[];
+  const lo=new THREE.Color(0x8fd18a), mid=new THREE.Color(0xc9a46a), hi=new THREE.Color(0xefe9d8), line=new THREE.Color(0x3a4a30);
+  for(let i=0;i<pos.count;i++){
+    const x=pos.getX(i), z=pos.getZ(i), h=terrainH(x,z); pos.setY(i,h);
+    const c=h<10?lo.clone().lerp(mid,h/10):mid.clone().lerp(hi,Math.min(1,(h-10)/18));
+    const band=(h%4)/4; if(h>1.2&&band<0.12) c.lerp(line,0.55);
+    colors.push(c.r,c.g,c.b);
+  }
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3)); geo.computeVertexNormals();
+  scene.add(new THREE.Mesh(geo,new THREE.MeshLambertMaterial({vertexColors:true})));
+  // 海
+  const sea=new THREE.Mesh(new THREE.PlaneGeometry(60,90),new THREE.MeshLambertMaterial({color:0x2f6f8f}));
+  sea.rotation.x=-Math.PI/2; sea.position.set(-98,0.25,0); scene.add(sea);
+  // 河川：從東邊山區流到西邊海
+  const pts=[[62,-6],[44,-14],[28,-8],[12,4],[-4,10],[-22,4],[-40,-6],[-58,-2],[-72,0]].map(p=>new THREE.Vector3(p[0],terrainH(p[0],p[1])+0.5,p[1]));
+  const curve=new THREE.CatmullRomCurve3(pts);
+  scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve,120,0.9,8,false),new THREE.MeshLambertMaterial({color:0x7fb6d9})));
+  const drops=[]; for(let k=0;k<24;k++){const m=new THREE.Mesh(new THREE.SphereGeometry(0.75,10,10),new THREE.MeshBasicMaterial({color:0xefe9d8}));scene.add(m);drops.push(m)}
+  // 淹水水面
+  const flood=new THREE.Mesh(new THREE.PlaneGeometry(140,90),new THREE.MeshLambertMaterial({color:0x5a9fd6,transparent:true,opacity:0.6}));
+  flood.rotation.x=-Math.PI/2; scene.add(flood);
+  R3={renderer,scene,camera,curve,drops,flood,canvas};
+  resize3D();
+  return R3;
+}
+function resize3D(){
+  if(!R3) return;
+  const w=R3.canvas.clientWidth||1600, h=Math.round(w*9/16);
+  R3.renderer.setSize(w,h,false);
+}
+window.addEventListener('resize',()=>{resize3D();window.seek(cur)});
+function camAt(px,py,pz){R3.camera.position.set(px,py,pz);R3.camera.lookAt(0,4,0);R3.camera.updateMatrixWorld()}
+// 3D 點投影到 1600×900 舞台座標
+function proj(x,y,z){const v=new THREE.Vector3(x,y,z).project(R3.camera);return [(v.x+1)*800,(1-v.y)*450,v.z<1]}
+function render3D(t,mode){
+  const r=init3D(); if(!r) return;
+  const u=mode==='terrain'?t-46:t-64;
+  if(mode==='terrain'){
+    // 先由正上方俯視（像 2D 地圖），再傾斜、環繞
+    const tilt=ease(P(u,0.6,4)), ang=lerp(-0.9,0.7,ease(P(u,4,17)));
+    const rad=lerp(8,112,tilt), hgt=lerp(200,62,tilt);
+    camAt(Math.sin(ang)*rad,hgt,Math.cos(ang)*rad+0.01);
+    r.flood.visible=false;
+  }else{
+    camAt(-62,52,92);
+    r.flood.visible=true;
+    r.flood.position.y=lerp(0.2,3.4,ease(P(u,1,7)));
+  }
+  r.drops.forEach((m,k)=>{const p=r.curve.getPoint(((k/r.drops.length)+t*0.06)%1);m.position.set(p.x,p.y+0.6,p.z)});
+  r.renderer.render(r.scene,r.camera);
+}
+function label3D(x,y,z,s,col,size=30,o=1){
+  if(!R3) return '';
+  const [sx,sy,ok]=proj(x,y,z); if(!ok) return '';
+  const cx=clamp(sx,140,1460), cy=clamp(sy,80,800);
+  return `<g opacity="${o}"><circle cx="${cx}" cy="${cy+18}" r="6" fill="${col}"/>
+    <rect x="${cx-s.length*size*0.55-14}" y="${cy-size-14}" width="${s.length*size*1.1+28}" height="${size+22}" rx="10" fill="rgba(26,43,35,.82)" stroke="${col}" stroke-width="2"/>
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" class="t-chalk" style="font-size:${size}px;fill:${col}">${esc(s)}</text></g>`;
+}
+function no3D(){return `<text x="800" y="450" text-anchor="middle" class="t-body" style="font-size:30px;fill:var(--chalk-dim)">這台裝置無法顯示 3D（需要 WebGL 與網路載入 three.js），請看下方字幕。</text>`}
+function q5(u,t){
+  if(!THREE_OK) return no3D();
+  const top=1-ease(P(u,0,1.2));
+  let g=`<g opacity="${top}">${box(500,250,600,400,1,'var(--yellow)','rgba(239,233,216,.04)',14)}${txt(800,460,'2D 地圖浮起來…',40,'var(--yellow)','t-chalk','text-anchor="middle"')}</g>`;
+  const lo=ease(P(u,5,6));
+  g+=label3D(52,30,-8,'東：高山',`var(--chalk)`,30,lo)+label3D(-44,3,22,'西：平原','var(--green)',30,ease(P(u,6.5,7.5)))+label3D(-60,3,-2,'河川流向海','var(--blue)',28,ease(P(u,8,9)));
+  g+=`<g opacity="${ease(P(u,10,11))}">${box(220,800,1160,64,1,'var(--yellow)','rgba(26,43,35,.85)',12)}${txt(800,843,'3D 只負責看懂空間，作答仍在 2D 關卡卡片',28,'var(--yellow)','t-chalk','text-anchor="middle"')}</g>`;
+  g+=txt(60,70,'第 2、3 關加入 3D',32,'var(--yellow)','t-chalk',`opacity="${ease(P(u,1.5,2.5))}"`);
+  return g;
+}
+function q6(u){
+  if(!THREE_OK) return no3D();
+  let g=txt(60,70,'第 4 關：淹水情境',32,'var(--yellow)');
+  g+=label3D(-40,4,10,'低窪處先淹水','var(--blue)',30,ease(P(u,3.5,4.5)));
+  g+=`<g opacity="${ease(P(u,5,6))}">${box(220,800,1160,64,1,'var(--orange)','rgba(26,43,35,.85)',12)}${txt(800,843,'日降雨 650 mm 的情境模擬，不是即時預報',28,'var(--orange)','t-chalk','text-anchor="middle"')}</g>`;
+  return g;
+}
+const MODE=['2d','2d','2d','2d','terrain','flood','2d','2d'];
+const RENDER=[q1,q2,q3,q4,q5,q6,q7,q8].map(fn=>(t,s)=>fn(t-s.a,t));
+
+// ===== 契約：window.seek(t) =====
+const stage=document.getElementById('stage');
+const capEl=document.getElementById('caption');
+function segIndex(t){for(let i=SEGS.length-1;i>=0;i--) if(t>=SEGS[i].a) return i; return 0}
+window.seek=async function(t){
+  t=clamp(t,0,window.DURATION);
+  const i=segIndex(t), s=SEGS[i];
+  const o=sceneOpacity(t,s,i===SEGS.length-1);
+  const cv=document.getElementById('three'), m=MODE[i];
+  if(m!=='2d'&&THREE_OK){render3D(t,m);cv.style.opacity=o}else cv.style.opacity=0;
+  stage.innerHTML=`<g opacity="${o}">${RENDER[i](t,s)}</g>
+    <text x="1560" y="870" text-anchor="end" class="t-body" style="font-size:20px;fill:var(--chalk-dim)">${i+1} / ${SEGS.length}・${esc(s.name)}</text>`;
+  capEl.innerHTML=s.cap;
+  return true;
+};
+window.ready=document.fonts?document.fonts.ready.catch(()=>null):Promise.resolve();
+
+// ===== 播放器外殼（只負責呼叫 seek）=====
+const playBtn=document.getElementById('play'), scrub=document.getElementById('scrub'), timeEl=document.getElementById('time');
+const chap=document.getElementById('chapters');
+let cur=0, playing=false, last=0;
+SEGS.forEach((s,i)=>{const li=document.createElement('li');const b=document.createElement('button');b.type='button';b.textContent=`${i+1}・${s.name}`;b.onclick=()=>{pause();show(s.a)};li.appendChild(b);chap.appendChild(li)});
+function show(t){
+  cur=clamp(t,0,window.DURATION);scrub.value=cur;
+  timeEl.textContent=`${cur.toFixed(1)} / ${window.DURATION.toFixed(1)}`;
+  window.seek(cur);
+  const i=segIndex(cur);[...chap.querySelectorAll('button')].forEach((b,j)=>b.setAttribute('aria-current',j===i?'true':'false'));
+}
+function frame(now){if(!playing)return;cur+=(now-last)/1000;last=now;if(cur>=window.DURATION){cur=window.DURATION;pause()}show(cur);if(playing)requestAnimationFrame(frame)}
+function play(){if(cur>=window.DURATION-0.05)cur=0;playing=true;playBtn.textContent='暫停';last=performance.now();requestAnimationFrame(frame)}
+function pause(){playing=false;playBtn.textContent='播放'}
+playBtn.onclick=()=>playing?pause():play();
+scrub.oninput=()=>{pause();show(parseFloat(scrub.value))};
+document.getElementById('prev').onclick=()=>{poster=false;pause();const i=segIndex(cur-0.6);show(SEGS[i].a)};
+document.getElementById('next').onclick=()=>{poster=false;pause();const i=segIndex(cur)+1;show(i<SEGS.length?SEGS[i].a:window.DURATION)};
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'&&e.key!==' ')return;
+  if(e.key===' '&&e.target.tagName==='BUTTON'&&e.target!==playBtn)return;
+  if(e.key===' '){e.preventDefault();playBtn.click()}
+  else if(e.key==='ArrowRight'){document.getElementById('next').click()}
+  else if(e.key==='ArrowLeft'){document.getElementById('prev').click()}
+});
+// 開啟時先停在開場完成的畫面（不自動播放），按播放從頭開始
+let poster=true;
+const POSTER_T=7.6;
+show(POSTER_T);
+playBtn.onclick=()=>{if(poster){poster=false;cur=0}playing?pause():play()};
+scrub.addEventListener('input',()=>{poster=false});
+chap.addEventListener('click',()=>{poster=false});
+window.ready.then(()=>show(cur));
+</script>
+
+</html>

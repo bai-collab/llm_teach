@@ -29,6 +29,7 @@
 | 瀏覽器端小模型、離線去個資化、教師工作台 | [06 其他 LLM 專案](lessons/06-related-llm-projects.md) | WebLLM、Transformers.js、teacher_UI |
 | **跟老師介紹 AI 怎麼用（教師研習開場動畫）** | [老師當導演（網頁動畫）](https://bai-collab.github.io/llm_teach/animations/teacher-as-director/)｜[原始檔](animations/teacher-as-director/index.html) | AI 五種角色、四處找資料、路網圖整理、換人檢查、錯誤筆記本 |
 | **教師儀表板怎麼用（作答紀錄＋AI 分析）** | [教師儀表板導覽（網頁動畫）](https://bai-collab.github.io/llm_teach/animations/teacher-dashboard/)｜[原始檔](animations/teacher-dashboard/index.html) | 找學生、作答時間軸、最後有效成績、按送出才呼叫 AI、引用回查 |
+| **老師用 Claude Code 做闖關教材（2D＋3D）** | [闖關教材製作（網頁動畫）](https://bai-collab.github.io/llm_teach/animations/quest-material/)｜[原始檔](animations/quest-material/index.html) | 下指令、先出規格再核准、2D 關卡作答、three.js 地形與淹水情境、三道驗收 |
 
 ## 📚 建議講課順序
 
@@ -57,7 +58,8 @@ llm_teach/
 ├─ README.md                         # ← 你在這裡：主題索引
 ├─ animations/                       # 教學動畫（單檔 HTML，GitHub Pages 可直接播放）
 │  ├─ teacher-as-director/index.html # 老師當導演：跟 AI 一起備課（123 秒・10 段，成果牆可點開作品）
-│  └─ teacher-dashboard/index.html   # 教師儀表板導覽（60 秒・6 段，假資料）
+│  ├─ teacher-dashboard/index.html   # 教師儀表板導覽（60 秒・6 段，假資料）
+│  └─ quest-material/index.html      # 闖關教材製作（92 秒・8 段，2D＋three.js 3D）
 ├─ lessons/                          # 講義（Markdown，GitHub 上可直接看 Mermaid 圖）
 │  ├─ 01-what-is-a-harness.md
 │  ├─ 02-local-harness-adaptive-loop.md

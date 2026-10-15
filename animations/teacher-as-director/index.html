@@ -282,7 +282,7 @@ function s6(t){
 // 成果牆的作品與公開連結（頁面下方的作品清單也讀這裡）
 const WORKS=[
   ['臆測五階段','學生用 Scratch 自學五階段','https://github.com/bai-collab/osep_math'],
-  ['嘉義互動地圖','社會科闖關的數位教具','https://bai-collab.github.io/Mini-Taiwan-Pulse/'],
+  ['嘉義地圖闖關','2D＋3D 動畫：用 Claude Code 做闖關','https://bai-collab.github.io/llm_teach/animations/quest-material/'],
   ['閱讀路網圖','北園六年閱讀 PBL 知識地圖','https://bai-collab.github.io/pyes-reading-rock-2026/pbl-pathways.html'],
   ['教師儀表板','一分鐘動畫導覽：作答紀錄＋AI 分析','https://bai-collab.github.io/llm_teach/animations/teacher-dashboard/']
 ];
@@ -456,7 +456,7 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='ArrowRight'){document.getElementById('next').click()}
   else if(e.key==='ArrowLeft'){document.getElementById('prev').click()}
 });
-document.getElementById('works').innerHTML=WORKS.map(w=>`<li><a href="${esc(w[2])}" target="_blank" rel="noopener">${esc(w[0])}</a><span>${esc(w[1])}</span></li>`).join('');
+document.getElementById('works').innerHTML=WORKS.concat([['嘉義互動地圖','闖關使用的數位教具','https://bai-collab.github.io/Mini-Taiwan-Pulse/']]).map(w=>`<li><a href="${esc(w[2])}" target="_blank" rel="noopener">${esc(w[0])}</a><span>${esc(w[1])}</span></li>`).join('');
 // 開啟時先停在開場完成的畫面（不自動播放），按播放從頭開始
 let poster=true;
 const POSTER_T=7.5;
