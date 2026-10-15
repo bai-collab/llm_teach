@@ -456,7 +456,7 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='ArrowRight'){document.getElementById('next').click()}
   else if(e.key==='ArrowLeft'){document.getElementById('prev').click()}
 });
-document.getElementById('works').innerHTML=WORKS.concat([['嘉義互動地圖','闖關使用的數位教具','https://bai-collab.github.io/Mini-Taiwan-Pulse/']]).map(w=>`<li><a href="${esc(w[2])}" target="_blank" rel="noopener">${esc(w[0])}</a><span>${esc(w[1])}</span></li>`).join('');
+document.getElementById('works').innerHTML=WORKS.concat([['嘉義互動地圖','闖關使用的數位教具','https://bai-collab.github.io/Mini-Taiwan-Pulse/'],['為什麼要換家審查','3D 動畫：答案地形與局部解','https://bai-collab.github.io/llm_teach/animations/review-landscape/'],['本工作區的 Harness','2D 動畫：規則怎麼讓 AI 好好做事','https://bai-collab.github.io/llm_teach/animations/harness-tour/']]).map(w=>`<li><a href="${esc(w[2])}" target="_blank" rel="noopener">${esc(w[0])}</a><span>${esc(w[1])}</span></li>`).join('');
 // 開啟時先停在開場完成的畫面（不自動播放），按播放從頭開始
 let poster=true;
 const POSTER_T=7.5;

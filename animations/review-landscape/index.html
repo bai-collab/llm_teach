@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<title>為什麼要換家審查</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* 版面：一塊教室黑板當舞台，下方是字幕與講者用的分段控制列（刻意只用黑板單一外觀） */
+:root{
+  --board:#23392f;      /* 黑板 */
+  --board-deep:#1a2b23; /* 黑板陰影與頁面底色 */
+  --frame:#6e4c31;      /* 木框 */
+  --chalk:#efe9d8;      /* 白粉筆 */
+  --chalk-dim:#a9b3a6;  /* 擦過的粉筆 */
+  --yellow:#f2c14e;     /* 黃粉筆：重點 */
+  --orange:#e8875b;     /* 作者 AI */
+  --blue:#7fb6d9;       /* 審查 AI */
+  --green:#8fd18a;      /* 通過 */
+  --red:#e66a5c;        /* 退件 */
+  --font-chalk:"LXGW WenKai TC","Kaiti TC","DFKai-SB","BiauKai",serif;
+  --font-body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--board-deep);color:var(--chalk)}
+body{margin:0;font-family:var(--font-body);padding-inline:16px;padding-block:20px 28px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px}
+h1{font-family:var(--font-chalk);font-weight:700;font-size:clamp(1.5rem,3.2vw,2.1rem);margin:0;color:var(--chalk);text-wrap:balance}
+.sub{color:var(--chalk-dim);font-size:.95rem;margin:0}
+.board{box-sizing:border-box;position:relative;border:14px solid var(--frame);border-radius:6px;background:var(--board);box-shadow:inset 0 0 60px rgba(0,0,0,.45);max-width:100%}
+.board svg{position:relative;z-index:1;display:block;width:100%;height:auto;aspect-ratio:16/9}
+#three{position:absolute;inset:0;width:100%;height:100%;display:block;opacity:0}
+.caption{font-family:var(--font-chalk);font-size:clamp(1.05rem,2.2vw,1.45rem);line-height:1.5;min-height:2.3em;margin:0;color:var(--chalk)}
+.caption b{color:var(--yellow);font-weight:700}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+button{font:inherit;font-size:.95rem;color:var(--chalk);background:transparent;border:1.5px solid var(--chalk-dim);border-radius:999px;padding:.4em 1em;cursor:pointer}
+button:hover{border-color:var(--yellow);color:var(--yellow)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+#play{min-width:5.5em;border-color:var(--yellow);color:var(--yellow)}
+#scrub{flex:1 1 220px;min-width:0;accent-color:var(--yellow)}
+#time{font-variant-numeric:tabular-nums;color:var(--chalk-dim);font-size:.9rem;min-width:6.5em;text-align:right}
+.chapters{display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:0;list-style:none}
+.chapters button{font-size:.88rem;padding:.3em .85em;border-color:rgba(239,233,216,.25);color:var(--chalk-dim)}
+.chapters button[aria-current="true"]{border-color:var(--yellow);color:var(--yellow)}
+.note{color:var(--chalk-dim);font-size:.85rem;margin:0}
+.works h2{font-family:var(--font-chalk);font-size:1.15rem;margin:0 0 6px;color:var(--yellow)}
+.works ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 16px}
+.works li{min-width:0}
+.works a{color:var(--chalk);text-decoration-color:var(--chalk-dim);text-underline-offset:3px}
+.works a:hover{color:var(--yellow)}
+.works span{display:block;color:var(--chalk-dim);font-size:.85rem}
+/* 舞台內文字 */
+.t-chalk{font-family:var(--font-chalk);fill:var(--chalk)}
+.t-body{font-family:var(--font-body);fill:var(--chalk)}
+@media (prefers-reduced-motion: reduce){ .board{box-shadow:none} }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>為什麼要換一家 AI 審查：答案地形與局部解</h1>
+    <p class="sub">100 秒・八段・3D 圖解・可停在任一段解說</p>
+  </header>
+  <div class="board"><canvas id="three" aria-hidden="true"></canvas><svg id="stage" viewBox="0 0 1600 900" role="img" aria-label="換家族審查與局部解動畫"></svg></div>
+  <p class="caption" id="caption" aria-live="polite"></p>
+  <div class="controls">
+    <button id="prev" type="button" aria-label="上一段">上一段</button>
+    <button id="play" type="button">播放</button>
+    <button id="next" type="button" aria-label="下一段">下一段</button>
+    <input id="scrub" type="range" min="0" max="100" step="0.05" value="0" aria-label="時間軸">
+    <span id="time">0.0 / 100.0</span>
+  </div>
+  <ul class="chapters" id="chapters"></ul>
+  <p class="note">答案地形是幫助理解的比喻：AI 生成答案時並不是真的在地形上滾球。3D 以 three.js 繪製（需網路載入）。<a href="https://bai-collab.github.io/llm_teach/animations/teacher-as-director/" target="_blank" rel="noopener" style="color:inherit">老師當導演（上一支動畫）</a><br>鍵盤：空白鍵播放／暫停，左右方向鍵切換段落。畫面只由時間決定，可用 window.seek(t) 逐格輸出成影片。</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ===== 純函數工具 =====
+const clamp=(x,lo,hi)=>Math.min(hi,Math.max(lo,x));
+const P=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+const ease=x=>1-Math.pow(1-x,3);
+const back=x=>{const c=1.6;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const lerp=(a,b,x)=>a+(b-a)*x;
+const typed=(s,x)=>s.slice(0,Math.round([...s].length*clamp(x,0,1))).replace(/[<>&]/g,'');
+function sceneOpacity(t,s,last){
+  const fin=P(t,s.a,s.a+0.5), fout=last?1:1-P(t,s.b-0.4,s.b);
+  return Math.min(fin,fout);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+
+// ===== 圖形元件 =====
+function teacher(x,y,o=1,s=1){
+  return `<g transform="translate(${x} ${y}) scale(${s})" opacity="${o}">
+    <circle cx="0" cy="-118" r="34" fill="none" stroke="var(--chalk)" stroke-width="5"/>
+    <path d="M-12 -122 q4 -5 8 0 M8 -122 q4 -5 8 0" stroke="var(--chalk)" stroke-width="3" fill="none"/>
+    <path d="M-8 -104 q8 7 16 0" stroke="var(--chalk)" stroke-width="3" fill="none"/>
+    <path d="M-48 0 Q-48 -78 0 -80 Q48 -78 48 0 Z" fill="none" stroke="var(--chalk)" stroke-width="5"/>
+    <rect x="-34" y="-60" width="68" height="26" rx="6" fill="var(--yellow)"/>
+    <text x="0" y="-41" text-anchor="middle" class="t-body" style="font-size:17px;font-weight:700;fill:var(--board-deep)">導演</text>
+  </g>`;
+}
+function helper(x,y,color,label,o=1,s=1,tag=''){
+  return `<g transform="translate(${x} ${y}) scale(${s})" opacity="${o}">
+    <line x1="0" y1="-62" x2="0" y2="-82" stroke="${color}" stroke-width="4"/>
+    <circle cx="0" cy="-86" r="7" fill="${color}"/>
+    <rect x="-46" y="-62" width="92" height="74" rx="18" fill="none" stroke="${color}" stroke-width="5"/>
+    <circle cx="-16" cy="-28" r="7" fill="${color}"/><circle cx="16" cy="-28" r="7" fill="${color}"/>
+    <path d="M-12 -8 q12 8 24 0" stroke="${color}" stroke-width="3.5" fill="none"/>
+    <text x="0" y="44" text-anchor="middle" class="t-chalk" style="font-size:26px;fill:${color}">${esc(label)}</text>
+    ${tag?`<text x="0" y="72" text-anchor="middle" class="t-body" style="font-size:17px;fill:var(--chalk-dim)">${esc(tag)}</text>`:''}
+  </g>`;
+}
+function card(x,y,w,h,title,body,o=1,color='var(--chalk)'){
+  return `<g transform="translate(${x} ${y})" opacity="${o}">
+    <rect x="0" y="0" width="${w}" height="${h}" rx="10" fill="rgba(239,233,216,.06)" stroke="${color}" stroke-width="3" stroke-dasharray="2 0"/>
+    <text x="22" y="40" class="t-body" style="font-size:20px;fill:var(--chalk-dim)">${esc(title)}</text>
+    <text x="22" y="${h-28}" class="t-chalk" style="font-size:32px;fill:${color}">${esc(body)}</text>
+  </g>`;
+}
+function doc(x,y,o=1,s=1,rot=0){
+  let lines='';
+  for(let i=0;i<5;i++) lines+=`<line x1="18" y1="${36+i*22}" x2="${i===4?70:102}" y2="${36+i*22}" stroke="var(--chalk-dim)" stroke-width="4"/>`;
+  return `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})" opacity="${o}">
+    <path d="M0 0 H96 L120 24 V150 H0 Z" fill="var(--board)" stroke="var(--chalk)" stroke-width="4"/>
+    <text x="18" y="26" class="t-body" style="font-size:15px;fill:var(--yellow)">教案</text>${lines}
+  </g>`;
+}
+function stamp(x,y,text,color,o,s,rot=-12){
+  return `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})" opacity="${o}">
+    <rect x="-110" y="-38" width="220" height="76" rx="10" fill="none" stroke="${color}" stroke-width="6"/>
+    <text x="0" y="14" text-anchor="middle" class="t-chalk" style="font-size:40px;font-weight:700;fill:${color}">${esc(text)}</text>
+  </g>`;
+}
+
+// ===== 時間表（秒）=====
+window.DURATION = 100;
+const SEGS = [
+  {a:0,  b:8,   name:'開場',       cap:'同一家 AI 做的，<b>為什麼要給另一家審？</b>'},
+  {a:8,  b:22,  name:'答案地形',   cap:'把所有可能的答案想成一片地形：<b>越低，答案越好</b>（這是比喻）。最深的谷就是最佳解。'},
+  {a:22, b:36,  name:'怎麼找答案', cap:'AI 一步一步往<b>附近比較低</b>的地方走，就像球往下滾。'},
+  {a:36, b:52,  name:'局部解',     cap:'停在小坑裡，四周都比較高，<b>就以為已經最好</b>；其實山脊後面還有更深的谷。'},
+  {a:52, b:66,  name:'同家族審查', cap:'同一家的審查者，訓練資料和習慣相近，<b>容易滾進同一個坑</b>，一起說「沒問題」。'},
+  {a:66, b:82,  name:'換家族審查', cap:'另一家從不同方向看，<b>提出反例</b>，把答案推過山脊，找到更深的谷。'},
+  {a:82, b:92,  name:'盲點',       cap:'不是誰比較聰明，是<b>錯法不一樣</b>；不保證找到最好，只是降低一起錯的機會。'},
+  {a:92, b:100, name:'結語',       cap:'所以本工作區的規則是：<b>誰做的，不由自己審</b>。'}
+];
+// ===== 共用小元件 =====
+const box=(x,y,w,h,o=1,stroke='var(--chalk-dim)',fill='rgba(239,233,216,.04)',r=10)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}" stroke="${stroke}" stroke-width="3" opacity="${o}"/>`;
+const txt=(x,y,s,size=26,fill='var(--chalk)',cls='t-chalk',extra='')=>`<text x="${x}" y="${y}" class="${cls}" style="font-size:${size}px;fill:${fill}" ${extra}>${esc(s)}</text>`;
+const tag=(x,y,s,col,size=30)=>`${box(x,y,s.length*size*1.05+40,size+26,1,col,'rgba(26,43,35,.85)',12)}${txt(x+20,y+size+6,s,size,col)}`;
+// ===== 答案地形（比喻）：越低越好 =====
+const gss=(x,z,cx,cz,s)=>Math.exp(-((x-cx)**2+(z-cz)**2)/(2*s*s));
+function LH(x,z){return 12-15*gss(x,z,35,-15,15)-7.5*gss(x,z,-22,12,9)+10*Math.exp(-((x-8)**2)/(2*25)-(z*z)/(2*900))+0.0016*(x*x+z*z)+0.5*Math.sin(x*0.21)*Math.cos(z*0.17)}
+const GLOBAL=[34.2,-14.9], LOCAL=[-21.4,12.3];
+function descend(x,z,n=500,eta=0.9){const p=[[x,z]];for(let k=0;k<n;k++){const e=0.01,gx=(LH(x+e,z)-LH(x-e,z))/(2*e),gz=(LH(x,z+e)-LH(x,z-e))/(2*e),m=Math.hypot(gx,gz);if(m<1e-4)break;const st=Math.min(eta*m,1.2);x-=gx/m*st;z-=gz/m*st;p.push([x,z])}return p}
+const PATHS={};
+function paths(){
+  if(PATHS.a) return PATHS;
+  PATHS.a=descend(-52,34); PATHS.b=descend(-47,38); PATHS.c=descend(58,32);
+  // 反例把答案推過山脊：先直線爬過山脊，再往下滾到最深的谷
+  const up=[];const end=PATHS.a[PATHS.a.length-1];for(let k=0;k<=60;k++){const f=k/60;up.push([lerp(end[0],12,f),lerp(end[1],-7,f)])}
+  PATHS.d=up.concat(descend(12,-7));
+  return PATHS;
+}
+function along(p,f){const n=p.length-1,x=clamp(f,0,1)*n,i=Math.min(n-1,Math.floor(x)),k=x-i;return [lerp(p[i][0],p[i+1][0],k),lerp(p[i][1],p[i+1][1],k)]}
+// ===== 3D（three.js；每格只由 t 決定）=====
+const THREE_OK=(()=>{try{return !!window.THREE&&!!document.createElement('canvas').getContext('webgl')}catch(e){return false}})();
+let R3=null; const LW=150, LD=110, LN=150;
+function ball(color){const m=new THREE.Mesh(new THREE.SphereGeometry(2.2,24,18),new THREE.MeshStandardMaterial({color,roughness:0.35,metalness:0.1}));m.castShadow=true;return m}
+function trailLine(color){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(3*600),3));g.setDrawRange(0,0);return new THREE.Line(g,new THREE.LineBasicMaterial({color}))}
+function setTrail(line,p,f){const n=Math.max(1,Math.floor(clamp(f,0,1)*(p.length-1))+1),a=line.geometry.attributes.position;for(let i=0;i<n&&i<600;i++){const q=p[i];a.setXYZ(i,q[0],LH(q[0],q[1])+0.5,q[1])}a.needsUpdate=true;line.geometry.setDrawRange(0,Math.min(n,600))}
+function flag(color){const g=new THREE.Group();const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.25,12,8),new THREE.MeshStandardMaterial({color:0xefe9d8}));pole.position.y=6;const cl=new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,12,0),new THREE.Vector3(6,10.5,0),new THREE.Vector3(0,9,0)]),new THREE.MeshStandardMaterial({color,side:THREE.DoubleSide}));cl.geometry.computeVertexNormals();g.add(pole,cl);g.traverse(o=>o.castShadow=true);return g}
+function init3D(){
+  if(R3||!THREE_OK) return R3;
+  const canvas=document.getElementById('three');
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
+  renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  const scene=new THREE.Scene(); scene.background=new THREE.Color(0x23392f);
+  const camera=new THREE.PerspectiveCamera(38,16/9,1,2000);
+  scene.add(new THREE.HemisphereLight(0xe6f2ff,0x4a3d2a,0.6));
+  const sun=new THREE.DirectionalLight(0xfff1dc,0.95);sun.position.set(-60,120,70);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-110,right:110,top:100,bottom:-100,near:10,far:400});sun.shadow.bias=-0.0006;scene.add(sun);
+  // 地形：平滑著色，低處偏綠（好）、高處偏橘（差）
+  const geo=new THREE.PlaneGeometry(LW,LD,LN,Math.round(LN*LD/LW));geo.rotateX(-Math.PI/2);
+  const pa=geo.attributes.position,cols=[],lo=new THREE.Color('#2f9e83'),mid=new THREE.Color('#e9c46a'),hi=new THREE.Color('#d9774b');
+  for(let i=0;i<pa.count;i++){const x=pa.getX(i),z=pa.getZ(i),h=LH(x,z);pa.setY(i,h);const k=clamp((h+1)/21,0,1);const c=k<0.45?lo.clone().lerp(mid,k/0.45):mid.clone().lerp(hi,(k-0.45)/0.55);cols.push(c.r,c.g,c.b)}
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));geo.computeVertexNormals();
+  const land=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.85}));land.receiveShadow=true;land.castShadow=true;scene.add(land);
+  // 經緯格線，讓起伏更好讀
+  const gp=[];const step=6;
+  for(let x=-LW/2;x<=LW/2+0.01;x+=step)for(let z=-LD/2;z<LD/2;z+=1.5)gp.push(x,LH(x,z)+0.12,z,x,LH(x,z+1.5)+0.12,z+1.5);
+  for(let z=-LD/2;z<=LD/2+0.01;z+=step)for(let x=-LW/2;x<LW/2;x+=1.5)gp.push(x,LH(x,z)+0.12,z,x+1.5,LH(x+1.5,z)+0.12,z);
+  const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.Float32BufferAttribute(gp,3));
+  scene.add(new THREE.LineSegments(gg,new THREE.LineBasicMaterial({color:0x1a2b23,transparent:true,opacity:0.28})));
+  // 底座與地面陰影
+  const wp=[],E=[];const NZL=Math.round(LN*LD/LW);for(let i=0;i<=LN;i++)E.push([-LW/2+i*LW/LN,-LD/2]);for(let j=1;j<=NZL;j++)E.push([LW/2,-LD/2+j*LD/NZL]);for(let i=LN-1;i>=0;i--)E.push([-LW/2+i*LW/LN,LD/2]);for(let j=NZL-1;j>=0;j--)E.push([-LW/2,-LD/2+j*LD/NZL]);
+  for(let k=0;k<E.length-1;k++){const a=E[k],b=E[k+1],ha=LH(a[0],a[1]),hb=LH(b[0],b[1]);wp.push(a[0],ha,a[1],a[0],-3,a[1],b[0],hb,b[1],b[0],hb,b[1],a[0],-3,a[1],b[0],-3,b[1])}
+  const wg=new THREE.BufferGeometry();wg.setAttribute('position',new THREE.Float32BufferAttribute(wp,3));wg.computeVertexNormals();
+  const walls=new THREE.Mesh(wg,new THREE.MeshStandardMaterial({color:0x6b4a2f,roughness:1,side:THREE.DoubleSide}));walls.castShadow=true;scene.add(walls);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,400),new THREE.ShadowMaterial({opacity:0.3}));ground.rotation.x=-Math.PI/2;ground.position.y=-3.5;ground.receiveShadow=true;scene.add(ground);
+  const fGlobal=flag(0xf2c14e);fGlobal.position.set(GLOBAL[0],LH(...GLOBAL),GLOBAL[1]);scene.add(fGlobal);
+  const fLocal=flag(0xe66a5c);fLocal.position.set(LOCAL[0],LH(...LOCAL),LOCAL[1]);scene.add(fLocal);
+  const A=ball(0xe8875b),B=ball(0xf3b08a),C=ball(0x7fb6d9);
+  const tA=trailLine(0xe8875b),tB=trailLine(0xf3b08a),tC=trailLine(0x7fb6d9),tD=trailLine(0xe8875b);
+  scene.add(A,B,C,tA,tB,tC,tD);
+  R3={renderer,scene,camera,canvas,A,B,C,tA,tB,tC,tD,fGlobal,fLocal};
+  resize3D();return R3;
+}
+function resize3D(){if(!R3)return;const w=R3.canvas.clientWidth||1600;R3.renderer.setSize(w,Math.round(w*9/16),false)}
+window.addEventListener('resize',()=>{resize3D();window.seek(cur)});
+function cam(p,l){R3.camera.position.set(p[0],p[1],p[2]);R3.camera.lookAt(l[0],l[1],l[2]);R3.camera.updateMatrixWorld()}
+function lerp3(a,b,k){return [lerp(a[0],b[0],k),lerp(a[1],b[1],k),lerp(a[2],b[2],k)]}
+function proj(x,y,z){const v=new THREE.Vector3(x,y,z).project(R3.camera);return [(v.x+1)*800,(1-v.y)*450,v.z<1]}
+function put(m,xz,lift=2.2){m.position.set(xz[0],LH(xz[0],xz[1])+lift,xz[1])}
+const MODE=['2d','land','land','land','land','land','2d','2d'];
+// 每段的鏡頭與物件狀態
+function render3D(t,i){
+  const r=init3D();if(!r)return;const P0=paths(),u=t-SEGS[i].a;
+  const show=(m,v)=>{m.visible=v};
+  [r.A,r.B,r.C,r.tA,r.tB,r.tC,r.tD].forEach(m=>show(m,false));
+  r.fLocal.visible=i>=3; r.fGlobal.visible=true;
+  if(i===1){const ang=lerp(-0.5,0.5,ease(P(u,0,14)));cam([Math.sin(ang)*170,120,Math.cos(ang)*170],[0,0,0])}
+  if(i===2){const f=ease(P(u,2,12));show(r.A,true);show(r.tA,true);put(r.A,along(P0.a,f));setTrail(r.tA,P0.a,f);cam([-112,88,112],[-22,4,14])}
+  if(i===3){show(r.A,true);show(r.tA,true);put(r.A,along(P0.a,1));setTrail(r.tA,P0.a,1);const k=ease(P(u,4,12));cam(lerp3([-112,88,112],[100,105,125],k),lerp3([-22,4,14],[5,0,0],k))}
+  if(i===4){show(r.A,true);show(r.tA,true);put(r.A,along(P0.a,1));setTrail(r.tA,P0.a,1);const f=ease(P(u,2,11));show(r.B,true);show(r.tB,true);put(r.B,along(P0.b,f),2.2+ (f>=1?2.2:0)*0);setTrail(r.tB,P0.b,f);
+    // 兩顆球都停在坑裡時，第二顆稍微錯開
+    if(f>=1){const e=P0.b[P0.b.length-1];put(r.B,[e[0]+3.2,e[1]-1.5])}
+    cam([-108,86,104],[-22,4,14])}
+  if(i===5){const fc=ease(P(u,0.5,6)),fd=ease(P(u,7,14));show(r.C,true);show(r.tC,true);put(r.C,along(P0.c,fc));setTrail(r.tC,P0.c,fc);
+    show(r.A,true);show(r.tA,true);setTrail(r.tA,P0.a,1);show(r.tD,fd>0);put(r.A,fd>0?along(P0.d,fd):along(P0.a,1));if(fd>0)setTrail(r.tD,P0.d,fd);
+    show(r.B,true);const e=P0.b[P0.b.length-1];put(r.B,[e[0]+3.2,e[1]-1.5]);
+    if(fd>=1){const g=P0.c[P0.c.length-1];put(r.C,[g[0]+3.4,g[1]+1.6])}
+    cam([10,120,135],[5,0,0])}
+  r.renderer.render(r.scene,r.camera);
+}
+function label3D(x,y,z,s,col,size=28,o=1){
+  if(!R3||o<=0)return '';const [sx,sy,ok]=proj(x,y,z);if(!ok)return '';
+  const w=s.length*size*1.05+28,cx=clamp(sx,w/2+30,1570-w/2),cy=clamp(sy,90,790);
+  return `<g opacity="${o}"><line x1="${cx}" y1="${cy-4}" x2="${clamp(sx,30,1570)}" y2="${clamp(sy+30,90,860)}" stroke="${col}" stroke-width="2"/>
+    <rect x="${cx-w/2}" y="${cy-size-26}" width="${w}" height="${size+22}" rx="10" fill="rgba(26,43,35,.85)" stroke="${col}" stroke-width="2"/>
+    <text x="${cx}" y="${cy-12}" text-anchor="middle" class="t-chalk" style="font-size:${size}px;fill:${col}">${esc(s)}</text></g>`;
+}
+const at=(xz,lift)=>[xz[0],LH(xz[0],xz[1])+lift,xz[1]];
+function no3D(){return `<text x="800" y="450" text-anchor="middle" class="t-body" style="font-size:30px;fill:var(--chalk-dim)">這台裝置無法顯示 3D（需要 WebGL 與網路載入 three.js），請看下方字幕。</text>`}
+// ===== 各段畫面（SVG 疊在 3D 上）=====
+function b1(u){
+  let g=`<text x="800" y="300" text-anchor="middle" class="t-chalk" style="font-size:64px;font-weight:700">${typed('同一家 AI 做的，',P(u,0.2,1.6))}</text>
+    <text x="800" y="400" text-anchor="middle" class="t-chalk" style="font-size:64px;font-weight:700;fill:var(--yellow)">${typed('為什麼要給另一家審？',P(u,1.6,3.4))}</text>`;
+  g+=helper(560,700,'var(--orange)','作者 AI',ease(P(u,3.6,4.4)))+helper(800,700,'#f3b08a','同家族',ease(P(u,4.2,5)))+helper(1040,700,'var(--blue)','另一家',ease(P(u,4.8,5.6)));
+  return g;
+}
+function b2(u){if(!THREE_OK)return no3D();
+  return tag(40,30,'答案地形（比喻）','var(--yellow)',30)+label3D(...at(GLOBAL,13),'最佳解：最深的谷','var(--yellow)',28,ease(P(u,4,5)))
+    +`<g opacity="${ease(P(u,6,7))}">${box(1230,640,330,180,1,'var(--chalk-dim)','rgba(26,43,35,.85)',12)}
+      <rect x="1260" y="680" width="40" height="22" fill="#2f9e83"/>${txt(1316,699,'低：答案好',24,'var(--chalk)','t-body')}
+      <rect x="1260" y="720" width="40" height="22" fill="#e9c46a"/>${txt(1316,739,'中',24,'var(--chalk)','t-body')}
+      <rect x="1260" y="760" width="40" height="22" fill="#d9774b"/>${txt(1316,779,'高：答案差',24,'var(--chalk)','t-body')}</g>`}
+function b3(u){if(!THREE_OK)return no3D();const P0=paths(),f=ease(P(u,2,12));
+  return tag(40,30,'AI 怎麼找答案','var(--yellow)',30)+label3D(...at(along(P0.a,f),6),'作者 AI','var(--orange)',26,ease(P(u,0.5,1.5)))
+    +`<g opacity="${ease(P(u,4,5))}">${box(330,790,940,64,1,'var(--yellow)','rgba(26,43,35,.85)',12)}${txt(800,833,'每一步只看附近：哪邊比較低就往哪邊走',28,'var(--yellow)','t-chalk','text-anchor="middle"')}</g>`}
+function b4(u){if(!THREE_OK)return no3D();
+  return tag(40,30,'局部解','var(--red)',30)+label3D(...at(LOCAL,14),'局部解：四周都比較高','var(--red)',26,ease(P(u,1,2)))
+    +label3D(...at(GLOBAL,13),'山脊後面：更深的谷','var(--yellow)',26,ease(P(u,11,12)))
+    +`<g opacity="${ease(P(u,12.5,13.5))}">${box(330,790,940,64,1,'var(--red)','rgba(26,43,35,.85)',12)}${txt(800,833,'從坑裡往外看，每個方向都是上坡',28,'var(--red)','t-chalk','text-anchor="middle"')}</g>`}
+function b5(u){if(!THREE_OK)return no3D();const P0=paths();
+  const e=P0.b[P0.b.length-1];
+  return tag(40,30,'同家族審查','#f3b08a',30)+label3D(...at([-47,38],7),'同家族：從差不多的地方出發','#f3b08a',24,ease(P(u,0.5,1.5))*(1-P(u,10,10.6)))
+    +label3D(...at([e[0]+3.2,e[1]-1.5],9),'兩顆都說：沒問題','#f3b08a',26,ease(P(u,11,12)))
+    +`<g opacity="${ease(P(u,12,13))}">${box(330,790,940,64,1,'#f3b08a','rgba(26,43,35,.85)',12)}${txt(800,833,'訓練資料與習慣相近，盲點也相近',28,'#f3b08a','t-chalk','text-anchor="middle"')}</g>`}
+function b6(u){if(!THREE_OK)return no3D();const P0=paths(),fc=ease(P(u,0.5,6)),fd=ease(P(u,7,14));
+  let g=tag(40,30,'換家族審查','var(--blue)',30)+label3D(...at(along(P0.c,fc),7),'另一家：從不同方向看','var(--blue)',26,ease(P(u,0.5,1.5))*(1-P(u,6,6.6)));
+  g+=label3D(...at([10,-5],24),'反例：這裡還能更好','var(--blue)',26,ease(P(u,6.6,7.4))*(1-P(u,12,12.6)));
+  g+=label3D(...at(GLOBAL,13),'跳出局部解','var(--yellow)',28,ease(P(u,14,15)));
+  return g;
+}
+function b7(u){
+  let g=txt(800,140,'兩家的盲點，只有一小塊重疊',46,'var(--chalk)','t-chalk','text-anchor="middle"');
+  const a=ease(P(u,0.6,1.6)),b=ease(P(u,1.4,2.4)),sep=lerp(0,190,ease(P(u,2.6,5)));
+  g+=`<circle cx="${800-sep}" cy="450" r="230" fill="rgba(232,135,91,.22)" stroke="var(--orange)" stroke-width="5" opacity="${a}"/>
+    <circle cx="${800+sep}" cy="450" r="230" fill="rgba(127,182,217,.22)" stroke="var(--blue)" stroke-width="5" opacity="${b}"/>`;
+  g+=txt(800-sep-120,330,'作者那一家',30,'var(--orange)','t-chalk',`text-anchor="middle" opacity="${a}"`)+txt(800+sep+120,330,'另一家',30,'var(--blue)','t-chalk',`text-anchor="middle" opacity="${b}"`);
+  g+=txt(800,460,'一起錯',28,'var(--chalk)','t-chalk',`text-anchor="middle" opacity="${ease(P(u,5,6))}"`);
+  g+=`<g opacity="${ease(P(u,6.5,7.5))}">${box(260,740,1080,110,1,'var(--yellow)','rgba(26,43,35,.6)',12)}
+    ${txt(800,785,'不是誰比較聰明，是錯法不一樣',30,'var(--yellow)','t-chalk','text-anchor="middle"')}${txt(800,828,'不保證找到最好，只是降低一起錯的機會',24,'var(--chalk-dim)','t-body','text-anchor="middle"')}</g>`;
+  return g;
+}
+function b8(u){
+  let g=`<text x="800" y="330" text-anchor="middle" class="t-chalk" style="font-size:70px;font-weight:700;fill:var(--yellow)" opacity="${ease(P(u,0.2,1.2))}">誰做的，不由自己審</text>`;
+  g+=helper(620,640,'var(--orange)','作者',ease(P(u,1.4,2.2)))+`<path d="M700 600 H900" stroke="var(--chalk)" stroke-width="5" opacity="${ease(P(u,2,2.6))}"/><path d="M886 588 l18 12 l-18 12" fill="none" stroke="var(--chalk)" stroke-width="5" opacity="${ease(P(u,2.4,2.6))}"/>`+helper(980,640,'var(--blue)','審查者',ease(P(u,2.2,3)));
+  g+=txt(800,800,'審查者由老師（主 session）指定，刻意選不同家族的模型',26,'var(--chalk-dim)','t-body',`text-anchor="middle" opacity="${ease(P(u,3.4,4.2))}"`);
+  return g;
+}
+const RENDER=[b1,b2,b3,b4,b5,b6,b7,b8].map(fn=>(t,s)=>fn(t-s.a,t));
+
+// ===== 契約：window.seek(t) =====
+const stage=document.getElementById('stage');
+const capEl=document.getElementById('caption');
+function segIndex(t){for(let i=SEGS.length-1;i>=0;i--) if(t>=SEGS[i].a) return i; return 0}
+window.seek=async function(t){
+  t=clamp(t,0,window.DURATION);
+  const i=segIndex(t), s=SEGS[i];
+  const o=sceneOpacity(t,s,i===SEGS.length-1);
+  const cv=document.getElementById('three'), m=MODE[i];
+  if(m!=='2d'&&THREE_OK){render3D(t,i);cv.style.opacity=o}else cv.style.opacity=0;
+  stage.innerHTML=`<g opacity="${o}">${RENDER[i](t,s)}</g>
+    <text x="1560" y="870" text-anchor="end" class="t-body" style="font-size:20px;fill:var(--chalk-dim)">${i+1} / ${SEGS.length}・${esc(s.name)}</text>`;
+  capEl.innerHTML=s.cap;
+  return true;
+};
+window.ready=document.fonts?document.fonts.ready.catch(()=>null):Promise.resolve();
+
+// ===== 播放器外殼（只負責呼叫 seek）=====
+const playBtn=document.getElementById('play'), scrub=document.getElementById('scrub'), timeEl=document.getElementById('time');
+const chap=document.getElementById('chapters');
+let cur=0, playing=false, last=0;
+SEGS.forEach((s,i)=>{const li=document.createElement('li');const b=document.createElement('button');b.type='button';b.textContent=`${i+1}・${s.name}`;b.onclick=()=>{pause();show(s.a)};li.appendChild(b);chap.appendChild(li)});
+function show(t){
+  cur=clamp(t,0,window.DURATION);scrub.value=cur;
+  timeEl.textContent=`${cur.toFixed(1)} / ${window.DURATION.toFixed(1)}`;
+  window.seek(cur);
+  const i=segIndex(cur);[...chap.querySelectorAll('button')].forEach((b,j)=>b.setAttribute('aria-current',j===i?'true':'false'));
+}
+function frame(now){if(!playing)return;cur+=(now-last)/1000;last=now;if(cur>=window.DURATION){cur=window.DURATION;pause()}show(cur);if(playing)requestAnimationFrame(frame)}
+function play(){if(cur>=window.DURATION-0.05)cur=0;playing=true;playBtn.textContent='暫停';last=performance.now();requestAnimationFrame(frame)}
+function pause(){playing=false;playBtn.textContent='播放'}
+playBtn.onclick=()=>playing?pause():play();
+scrub.oninput=()=>{pause();show(parseFloat(scrub.value))};
+document.getElementById('prev').onclick=()=>{poster=false;pause();const i=segIndex(cur-0.6);show(SEGS[i].a)};
+document.getElementById('next').onclick=()=>{poster=false;pause();const i=segIndex(cur)+1;show(i<SEGS.length?SEGS[i].a:window.DURATION)};
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'&&e.key!==' ')return;
+  if(e.key===' '&&e.target.tagName==='BUTTON'&&e.target!==playBtn)return;
+  if(e.key===' '){e.preventDefault();playBtn.click()}
+  else if(e.key==='ArrowRight'){document.getElementById('next').click()}
+  else if(e.key==='ArrowLeft'){document.getElementById('prev').click()}
+});
+// 開啟時先停在開場完成的畫面（不自動播放），按播放從頭開始
+let poster=true;
+const POSTER_T=7.6;
+show(POSTER_T);
+playBtn.onclick=()=>{if(poster){poster=false;cur=0}playing?pause():play()};
+scrub.addEventListener('input',()=>{poster=false});
+chap.addEventListener('click',()=>{poster=false});
+window.ready.then(()=>show(cur));
+</script>
+
+</html>
