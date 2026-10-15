@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<title>教師儀表板導覽</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* 版面：一塊教室黑板當舞台，下方是字幕與講者用的分段控制列（刻意只用黑板單一外觀） */
+:root{
+  --board:#23392f;      /* 黑板 */
+  --board-deep:#1a2b23; /* 黑板陰影與頁面底色 */
+  --frame:#6e4c31;      /* 木框 */
+  --chalk:#efe9d8;      /* 白粉筆 */
+  --chalk-dim:#a9b3a6;  /* 擦過的粉筆 */
+  --yellow:#f2c14e;     /* 黃粉筆：重點 */
+  --orange:#e8875b;     /* 作者 AI */
+  --blue:#7fb6d9;       /* 審查 AI */
+  --green:#8fd18a;      /* 通過 */
+  --red:#e66a5c;        /* 退件 */
+  --font-chalk:"LXGW WenKai TC","Kaiti TC","DFKai-SB","BiauKai",serif;
+  --font-body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--board-deep);color:var(--chalk)}
+body{margin:0;font-family:var(--font-body);padding-inline:16px;padding-block:20px 28px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px}
+h1{font-family:var(--font-chalk);font-weight:700;font-size:clamp(1.5rem,3.2vw,2.1rem);margin:0;color:var(--chalk);text-wrap:balance}
+.sub{color:var(--chalk-dim);font-size:.95rem;margin:0}
+.board{box-sizing:border-box;position:relative;border:14px solid var(--frame);border-radius:6px;background:var(--board);box-shadow:inset 0 0 60px rgba(0,0,0,.45);max-width:100%}
+.board svg{display:block;width:100%;height:auto;aspect-ratio:16/9}
+.caption{font-family:var(--font-chalk);font-size:clamp(1.05rem,2.2vw,1.45rem);line-height:1.5;min-height:2.3em;margin:0;color:var(--chalk)}
+.caption b{color:var(--yellow);font-weight:700}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+button{font:inherit;font-size:.95rem;color:var(--chalk);background:transparent;border:1.5px solid var(--chalk-dim);border-radius:999px;padding:.4em 1em;cursor:pointer}
+button:hover{border-color:var(--yellow);color:var(--yellow)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+#play{min-width:5.5em;border-color:var(--yellow);color:var(--yellow)}
+#scrub{flex:1 1 220px;min-width:0;accent-color:var(--yellow)}
+#time{font-variant-numeric:tabular-nums;color:var(--chalk-dim);font-size:.9rem;min-width:6.5em;text-align:right}
+.chapters{display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:0;list-style:none}
+.chapters button{font-size:.88rem;padding:.3em .85em;border-color:rgba(239,233,216,.25);color:var(--chalk-dim)}
+.chapters button[aria-current="true"]{border-color:var(--yellow);color:var(--yellow)}
+.note{color:var(--chalk-dim);font-size:.85rem;margin:0}
+.works h2{font-family:var(--font-chalk);font-size:1.15rem;margin:0 0 6px;color:var(--yellow)}
+.works ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 16px}
+.works li{min-width:0}
+.works a{color:var(--chalk);text-decoration-color:var(--chalk-dim);text-underline-offset:3px}
+.works a:hover{color:var(--yellow)}
+.works span{display:block;color:var(--chalk-dim);font-size:.85rem}
+/* 舞台內文字 */
+.t-chalk{font-family:var(--font-chalk);fill:var(--chalk)}
+.t-body{font-family:var(--font-body);fill:var(--chalk)}
+@media (prefers-reduced-motion: reduce){ .board{box-shadow:none} }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>教師儀表板：看懂全班作答，再請 AI 幫忙分析</h1>
+    <p class="sub">一分鐘・六段・可停在任一段解說</p>
+  </header>
+  <div class="board"><svg id="stage" viewBox="0 0 1600 900" role="img" aria-label="教師儀表板功能動畫"></svg></div>
+  <p class="caption" id="caption" aria-live="polite"></p>
+  <div class="controls">
+    <button id="prev" type="button" aria-label="上一段">上一段</button>
+    <button id="play" type="button">播放</button>
+    <button id="next" type="button" aria-label="下一段">下一段</button>
+    <input id="scrub" type="range" min="0" max="60" step="0.05" value="0" aria-label="時間軸">
+    <span id="time">0.0 / 60.0</span>
+  </div>
+  <ul class="chapters" id="chapters"></ul>
+  <p class="note">畫面中的學生與數字皆為公開範本的假資料。<a href="https://github.com/bai-collab/teacher_UI" target="_blank" rel="noopener" style="color:inherit">teacher_UI 範本</a>｜<a href="https://bai-collab.github.io/llm_teach/animations/teacher-as-director/" target="_blank" rel="noopener" style="color:inherit">老師當導演（上一支動畫）</a><br>鍵盤：空白鍵播放／暫停，左右方向鍵切換段落。畫面只由時間決定，可用 window.seek(t) 逐格輸出成影片。</p>
+</div>
+
+<script>
+// ===== 時間表（秒）=====
+window.DURATION = 60;
+const SEGS = [
+  {a:0,  b:8,  name:'開場',      cap:'全班做到哪？誰卡住了？紀錄一多，<b>老師很難一筆一筆翻</b>。'},
+  {a:8,  b:20, name:'找學生',    cap:'輸入學生代號，或看全部學生；再用<b>題目、紀錄類型、日期</b>篩選。'},
+  {a:20, b:32, name:'作答紀錄',  cap:'每次作答排成時間軸，<b>範例、失敗、評分時改程式的都不算</b>，只看最後有效成績。'},
+  {a:32, b:46, name:'AI 分析',   cap:'老師<b>按下送出才呼叫 AI</b>；回答分成觀察、推測、建議、限制。'},
+  {a:46, b:54, name:'老師核對',  cap:'點引用就跳回原始紀錄，<b>核對依據後再採用建議</b>。'},
+  {a:54, b:60, name:'結語',      cap:'紀錄留在本機、金鑰集中設定，<b>要不要採用建議，由老師決定</b>。'}
+];
+
+// ===== 純函數工具 =====
+const clamp=(x,lo,hi)=>Math.min(hi,Math.max(lo,x));
+const P=(t,a,b)=>clamp((t-a)/(b-a),0,1);
+const ease=x=>1-Math.pow(1-x,3);
+const back=x=>{const c=1.6;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const lerp=(a,b,x)=>a+(b-a)*x;
+const typed=(s,x)=>s.slice(0,Math.round([...s].length*clamp(x,0,1))).replace(/[<>&]/g,'');
+function sceneOpacity(t,s,last){
+  const fin=P(t,s.a,s.a+0.5), fout=last?1:1-P(t,s.b-0.4,s.b);
+  return Math.min(fin,fout);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+
+// ===== 圖形元件 =====
+function teacher(x,y,o=1,s=1){
+  return `<g transform="translate(${x} ${y}) scale(${s})" opacity="${o}">
+    <circle cx="0" cy="-118" r="34" fill="none" stroke="var(--chalk)" stroke-width="5"/>
+    <path d="M-12 -122 q4 -5 8 0 M8 -122 q4 -5 8 0" stroke="var(--chalk)" stroke-width="3" fill="none"/>
+    <path d="M-8 -104 q8 7 16 0" stroke="var(--chalk)" stroke-width="3" fill="none"/>
+    <path d="M-48 0 Q-48 -78 0 -80 Q48 -78 48 0 Z" fill="none" stroke="var(--chalk)" stroke-width="5"/>
+    <rect x="-34" y="-60" width="68" height="26" rx="6" fill="var(--yellow)"/>
+    <text x="0" y="-41" text-anchor="middle" class="t-body" style="font-size:17px;font-weight:700;fill:var(--board-deep)">導演</text>
+  </g>`;
+}
+function helper(x,y,color,label,o=1,s=1,tag=''){
+  return `<g transform="translate(${x} ${y}) scale(${s})" opacity="${o}">
+    <line x1="0" y1="-62" x2="0" y2="-82" stroke="${color}" stroke-width="4"/>
+    <circle cx="0" cy="-86" r="7" fill="${color}"/>
+    <rect x="-46" y="-62" width="92" height="74" rx="18" fill="none" stroke="${color}" stroke-width="5"/>
+    <circle cx="-16" cy="-28" r="7" fill="${color}"/><circle cx="16" cy="-28" r="7" fill="${color}"/>
+    <path d="M-12 -8 q12 8 24 0" stroke="${color}" stroke-width="3.5" fill="none"/>
+    <text x="0" y="44" text-anchor="middle" class="t-chalk" style="font-size:26px;fill:${color}">${esc(label)}</text>
+    ${tag?`<text x="0" y="72" text-anchor="middle" class="t-body" style="font-size:17px;fill:var(--chalk-dim)">${esc(tag)}</text>`:''}
+  </g>`;
+}
+function card(x,y,w,h,title,body,o=1,color='var(--chalk)'){
+  return `<g transform="translate(${x} ${y})" opacity="${o}">
+    <rect x="0" y="0" width="${w}" height="${h}" rx="10" fill="rgba(239,233,216,.06)" stroke="${color}" stroke-width="3" stroke-dasharray="2 0"/>
+    <text x="22" y="40" class="t-body" style="font-size:20px;fill:var(--chalk-dim)">${esc(title)}</text>
+    <text x="22" y="${h-28}" class="t-chalk" style="font-size:32px;fill:${color}">${esc(body)}</text>
+  </g>`;
+}
+function doc(x,y,o=1,s=1,rot=0){
+  let lines='';
+  for(let i=0;i<5;i++) lines+=`<line x1="18" y1="${36+i*22}" x2="${i===4?70:102}" y2="${36+i*22}" stroke="var(--chalk-dim)" stroke-width="4"/>`;
+  return `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})" opacity="${o}">
+    <path d="M0 0 H96 L120 24 V150 H0 Z" fill="var(--board)" stroke="var(--chalk)" stroke-width="4"/>
+    <text x="18" y="26" class="t-body" style="font-size:15px;fill:var(--yellow)">教案</text>${lines}
+  </g>`;
+}
+function stamp(x,y,text,color,o,s,rot=-12){
+  return `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})" opacity="${o}">
+    <rect x="-110" y="-38" width="220" height="76" rx="10" fill="none" stroke="${color}" stroke-width="6"/>
+    <text x="0" y="14" text-anchor="middle" class="t-chalk" style="font-size:40px;font-weight:700;fill:${color}">${esc(text)}</text>
+  </g>`;
+}
+
+// ===== 儀表板場景（u＝本段經過秒數；畫面中的學生與數字皆為公開範本的假資料）=====
+const rnd=(i,k)=>{const x=Math.sin(i*12.9898+k*78.233)*43758.5453;return x-Math.floor(x)}; // 固定種子
+const box=(x,y,w,h,o=1,stroke='var(--chalk-dim)',fill='rgba(239,233,216,.04)',r=10)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}" stroke="${stroke}" stroke-width="3" opacity="${o}"/>`;
+const txt=(x,y,s,size=26,fill='var(--chalk)',cls='t-chalk',extra='')=>`<text x="${x}" y="${y}" class="${cls}" style="font-size:${size}px;fill:${fill}" ${extra}>${esc(s)}</text>`;
+// 儀表板外框：左側找學生，右側工作區
+function uiFrame(title,o=1){
+  return `<g opacity="${o}">${box(110,130,1380,700,1,'var(--chalk)','rgba(239,233,216,.03)',14)}
+    <line x1="420" y1="130" x2="420" y2="830" stroke="var(--chalk-dim)" stroke-width="3"/>
+    ${txt(140,182,'教師工作台',30)}${txt(460,182,title,30,'var(--yellow)')}</g>`;
+}
+function sidebar(u0,u){
+  const q=typed('測試01',P(u,u0,u0+1.2));
+  let g=txt(140,236,'找學生',22,'var(--chalk-dim)','t-body');
+  g+=box(140,252,250,52,1,P(u,u0-0.3,u0)>0&&u<u0+2.4?'var(--yellow)':'var(--chalk-dim)');
+  g+=txt(158,288,q||'輸入學生代號',24,q?'var(--chalk)':'var(--chalk-dim)','t-body');
+  const hit=P(u,u0+1.3,u0+1.8);
+  g+=box(140,330,250,58,1,hit>0?'var(--yellow)':'var(--chalk-dim)',hit>0?'rgba(242,193,78,.12)':'rgba(239,233,216,.04)')+txt(160,368,'測試01',26)+txt(370,368,'7 筆',20,'var(--chalk-dim)','t-body','text-anchor="end"');
+  g+=box(140,400,250,58,1-0.5*hit)+txt(160,438,'測試02',26,'var(--chalk)','t-chalk',`opacity="${1-0.5*hit}"`)+txt(370,438,'5 筆',20,'var(--chalk-dim)','t-body',`text-anchor="end" opacity="${1-0.5*hit}"`);
+  g+=box(140,480,250,52,1,'var(--chalk-dim)')+txt(265,515,'全部學生',22,'var(--chalk)','t-body','text-anchor="middle"');
+  return g;
+}
+function d1(u){
+  let g=`<text x="800" y="150" text-anchor="middle" class="t-chalk" style="font-size:60px;font-weight:700">${typed('全班做到哪？誰卡住了？',P(u,0.2,2.2))}</text>`;
+  g+=`<text x="800" y="215" text-anchor="middle" class="t-body" style="font-size:26px;fill:var(--chalk-dim)" opacity="${ease(P(u,2.2,3))}">教師儀表板：作答紀錄＋AI 分析助手</text>`;
+  const kinds=['評分 20/40','求助','範例','評分 0/40','失敗','評分 10/40','求助','評分 20/40','範例','失敗','評分 0/40','求助'];
+  kinds.forEach((k,i)=>{
+    const o=ease(P(u,1+i*0.25,1.5+i*0.25));
+    const x=620+rnd(i,1)*760, y=300+rnd(i,2)*430, r=(rnd(i,3)-0.5)*40;
+    g+=`<g transform="translate(${x} ${y}) rotate(${r})" opacity="${o}">${box(-95,-32,190,64,1,'var(--chalk-dim)','var(--board)',8)}${txt(0,10,k,24,'var(--chalk)','t-chalk','text-anchor="middle"')}</g>`;
+  });
+  g+=teacher(330,760,ease(P(u,0.6,1.4)));
+  const qm=ease(P(u,4,4.8));
+  g+=`<text x="410" y="560" class="t-chalk" style="font-size:72px;fill:var(--yellow)" opacity="${qm}">?</text><text x="250" y="590" class="t-chalk" style="font-size:54px;fill:var(--yellow)" opacity="${qm}">?</text>`;
+  return g;
+}
+function d2(u){
+  let g=uiFrame('作答紀錄',ease(P(u,0,0.6)))+sidebar(1,u);
+  const F=['學生代號','題目','紀錄類型','開始日期','結束日期'];
+  F.forEach((f,i)=>{
+    const on=P(u,4.4+i*0.6,4.8+i*0.6)>0&&u<4.8+i*0.6+0.8;
+    g+=txt(460+i*200,236,f,20,'var(--chalk-dim)','t-body')+box(460+i*200,250,180,50,1,on?'var(--yellow)':'var(--chalk-dim)');
+    g+=txt(476+i*200,284,i===0?(u>2.6?'測試01':'全部學生'):(i<3?'全部':'年/月/日'),22,'var(--chalk)','t-body');
+  });
+  const S=[['2','目前範圍學生'],['7','有效評分'],['4','導師求助（含模擬）']];
+  S.forEach((s,i)=>{
+    const o=ease(P(u,8+i*0.4,8.6+i*0.4));
+    g+=`<g opacity="${o}">${box(460+i*340,340,310,130)}${txt(490+i*340,410,s[0],56,'var(--yellow)')}${txt(490+i*340,450,s[1],22,'var(--chalk-dim)','t-body')}</g>`;
+  });
+  g+=txt(460,530,'目前各題成績（採最後一次有效評分）',24,'var(--chalk-dim)','t-body',`opacity="${ease(P(u,9.6,10.2))}"`);
+  [['Hello, world','20 / 40'],['輸入與變數','0 / 40']].forEach((c,i)=>{
+    const o=ease(P(u,9.8+i*0.4,10.4+i*0.4));
+    g+=`<g opacity="${o}">${box(460+i*500,550,470,150)}${txt(490+i*500,600,'測試01・'+c[0],26)}${txt(490+i*500,670,c[1],52,'var(--yellow)')}</g>`;
+  });
+  return g;
+}
+const TL=[['範例','不算：範例',0],['評分 10/40','',1],['失敗','不算：執行失敗',0],['評分 0/40','不算：評分時改了程式',0],['評分 20/40','最後有效成績',2]];
+function timeline(u,start,hl=-1,hlo=0){
+  let g=`<line x1="520" y1="250" x2="520" y2="${lerp(250,780,ease(P(u,start,start+1)))}" stroke="var(--chalk-dim)" stroke-width="4"/>`;
+  TL.forEach((r,i)=>{
+    const o=ease(P(u,start+0.6+i*1.1,start+1.1+i*1.1)), y=270+i*120;
+    const bad=r[2]===0, best=r[2]===2;
+    const col=best?'var(--yellow)':(bad?'var(--chalk-dim)':'var(--chalk)');
+    g+=`<g opacity="${o}"><circle cx="520" cy="${y}" r="14" fill="var(--board)" stroke="${col}" stroke-width="5"/>
+      ${box(560,y-40,560,80,1,best?'var(--yellow)':'var(--chalk-dim)',best?'rgba(242,193,78,.1)':'rgba(239,233,216,.04)')}
+      ${txt(590,y+12,`第 ${i+1} 次・${r[0]}`,30,col)}
+      ${bad?`<line x1="590" y1="${y+2}" x2="${590+((r[0].length+6)*23)}" y2="${y+2}" stroke="var(--red)" stroke-width="4"/>`:''}
+      ${r[1]?txt(1150,y+12,r[1],24,bad?'var(--red)':'var(--yellow)','t-body'):''}</g>`;
+    if(i===hl) g+=box(548,y-52,584,104,hlo,'var(--blue)','rgba(127,182,217,.12)',14);
+  });
+  return g;
+}
+function d3(u){
+  let g=uiFrame('作答紀錄・測試01・輸入與變數',1)+sidebar(-9,99);
+  g+=timeline(u,0.4);
+  return g;
+}
+function d4(u){
+  let g=uiFrame('AI 分析',1);
+  g+=txt(140,236,'分析範圍',22,'var(--chalk-dim)','t-body')+txt(140,280,'12 筆紀錄',26)+txt(140,318,'2 位學生',26);
+  g+=txt(140,400,'快速提問',22,'var(--chalk-dim)','t-body');
+  ['整理學習進展','找出卡關線索','規劃下一步引導'].forEach((b,i)=>{
+    const on=i===0&&P(u,0.8,1.2)>0;
+    g+=box(140,420+i*70,250,54,1,on?'var(--yellow)':'var(--chalk-dim)',on?'rgba(242,193,78,.12)':'rgba(239,233,216,.04)')+txt(265,456+i*70,b,22,on?'var(--yellow)':'var(--chalk)','t-body','text-anchor="middle"');
+  });
+  // 提問與送出
+  g+=box(460,230,1000,70,ease(P(u,1,1.5)),'var(--chalk-dim)','rgba(239,233,216,.08)')+txt(490,276,typed('請整理學習進展與依據',P(u,1.2,2.4)),28,'var(--chalk)','t-chalk',`opacity="${ease(P(u,1,1.5))}"`);
+  const press=P(u,2.8,3.2);
+  const sendCol=press>0?'var(--yellow)':'var(--chalk)';
+  g+=`<g opacity="${ease(P(u,2.4,2.8))}">${box(1250,720,210,70,1,sendCol,press>0?'rgba(242,193,78,.18)':'rgba(239,233,216,.06)')}${txt(1355,766,'送出分析',28,sendCol,'t-chalk','text-anchor="middle"')}
+    ${txt(1230,762,'按下才呼叫 AI',22,'var(--yellow)','t-body','text-anchor="end"')}</g>`;
+  const R=[['觀察','兩次有效評分都還沒拿到滿分','紀錄 2、5'],['推測','評分時還在改程式，可能沒把握','紀錄 4'],['建議','先做一題只有輸入的小練習',''],['限制','只有 12 筆紀錄，樣本少','']];
+  R.forEach((r,i)=>{
+    const o=ease(P(u,4+i*1.6,4.7+i*1.6)), y=330+i*95;
+    g+=`<g opacity="${o}">${box(460,y,1000,80,1,i===3?'var(--chalk-dim)':'var(--blue)')}
+      ${txt(490,y+52,r[0],30,'var(--blue)')}${txt(590,y+52,r[1],28)}
+      ${r[2]?`${box(1300,y+18,140,44,1,'var(--blue)','rgba(127,182,217,.12)',22)}${txt(1370,y+48,r[2],20,'var(--blue)','t-body','text-anchor="middle"')}`:''}</g>`;
+  });
+  g+=helper(1380,180,'var(--blue)','',ease(P(u,3.2,3.8)),0.55);
+  return g;
+}
+function d5(u){
+  // 從 AI 回答的引用跳回時間軸
+  const sw=ease(P(u,1,2)), outO=1-ease(P(u,1,1.5)), inO=ease(P(u,1.5,2));
+  let g=uiFrame(sw<0.5?'AI 分析':'作答紀錄・測試01・輸入與變數',1);
+  if(outO>0){
+    g+=`<g opacity="${outO}">${box(460,330,1000,80,1,'var(--blue)')}${txt(490,382,'觀察',30,'var(--blue)')}${txt(590,382,'兩次有效評分都還沒拿到滿分',28)}
+      ${box(1300,348,140,44,1,'var(--yellow)','rgba(242,193,78,.2)',22)}${txt(1370,378,'紀錄 2、5',20,'var(--yellow)','t-body','text-anchor="middle"')}</g>`;
+    const ring=P(u,0.2,0.9);
+    g+=`<circle cx="1370" cy="370" r="${lerp(30,60,ring)}" fill="none" stroke="var(--yellow)" stroke-width="4" opacity="${(1-ring)*outO}"/>`;
+  }
+  if(inO>0){
+    g+=`<g opacity="${inO}">${timeline(99,0,-1)}</g>`;
+    const h=ease(P(u,2.2,2.8));
+    g+=box(548,338,584,104,h,'var(--blue)','rgba(127,182,217,.12)',14)+box(548,698,584,104,h,'var(--blue)','rgba(127,182,217,.12)',14);
+    g+=txt(1105,402,'紀錄 2',24,'var(--blue)','t-body',`text-anchor="end" opacity="${h}"`)+txt(1105,762,'紀錄 5',24,'var(--blue)','t-body',`text-anchor="end" opacity="${h}"`);
+  }
+  const tip=ease(P(u,3.6,4.4));
+  g+=`<g opacity="${tip}">${box(140,560,250,170,1,'var(--yellow)','rgba(242,193,78,.08)')}
+    ${txt(265,620,'核對依據',30,'var(--yellow)','t-chalk','text-anchor="middle"')}${txt(265,670,'再採用建議',30,'var(--yellow)','t-chalk','text-anchor="middle"')}</g>`;
+  g+=teacher(265,500,tip,0.6);
+  return g;
+}
+function d6(u){
+  let g=`<text x="800" y="170" text-anchor="middle" class="t-chalk" style="font-size:54px;font-weight:700" opacity="${ease(P(u,0.2,1))}">AI 幫忙看，老師做決定</text>`;
+  const pts=[['紀錄留在本機','帳密與學生紀錄不進 Git'],['金鑰集中設定','AI 金鑰、試算表網址一處管理'],['送出才呼叫 AI','回答附引用，可回頭核對']];
+  pts.forEach((p,i)=>{
+    const o=ease(P(u,0.8+i*0.6,1.4+i*0.6));
+    g+=`<g opacity="${o}">${box(170+i*440,270,400,200)}${txt(370+i*440,350,p[0],36,'var(--yellow)','t-chalk','text-anchor="middle"')}${txt(370+i*440,410,p[1],22,'var(--chalk-dim)','t-body','text-anchor="middle"')}</g>`;
+  });
+  const l=ease(P(u,2.8,3.6));
+  g+=`<a href="https://github.com/bai-collab/teacher_UI" target="_blank" rel="noopener" aria-label="開啟 teacher_UI 範本"><g opacity="${l}" style="cursor:pointer">${box(420,560,760,110,1,'var(--chalk)','rgba(239,233,216,.06)',14)}
+    ${txt(800,605,'公開範本（假資料）',22,'var(--chalk-dim)','t-body','text-anchor="middle"')}${txt(800,648,'github.com/bai-collab/teacher_UI',32,'var(--chalk)','t-body','text-anchor="middle"')}</g></a>`;
+  return g;
+}
+const RENDER=[d1,d2,d3,d4,d5,d6].map(fn=>(t,s)=>fn(t-s.a));
+
+// ===== 契約：window.seek(t) =====
+const stage=document.getElementById('stage');
+const capEl=document.getElementById('caption');
+function segIndex(t){for(let i=SEGS.length-1;i>=0;i--) if(t>=SEGS[i].a) return i; return 0}
+window.seek=async function(t){
+  t=clamp(t,0,window.DURATION);
+  const i=segIndex(t), s=SEGS[i];
+  const o=sceneOpacity(t,s,i===SEGS.length-1);
+  stage.innerHTML=`<g opacity="${o}">${RENDER[i](t,s)}</g>
+    <text x="1560" y="870" text-anchor="end" class="t-body" style="font-size:20px;fill:var(--chalk-dim)">${i+1} / ${SEGS.length}・${esc(s.name)}</text>`;
+  capEl.innerHTML=s.cap;
+  return true;
+};
+window.ready=document.fonts?document.fonts.ready.catch(()=>null):Promise.resolve();
+
+// ===== 播放器外殼（只負責呼叫 seek）=====
+const playBtn=document.getElementById('play'), scrub=document.getElementById('scrub'), timeEl=document.getElementById('time');
+const chap=document.getElementById('chapters');
+let cur=0, playing=false, last=0;
+SEGS.forEach((s,i)=>{const li=document.createElement('li');const b=document.createElement('button');b.type='button';b.textContent=`${i+1}・${s.name}`;b.onclick=()=>{pause();show(s.a)};li.appendChild(b);chap.appendChild(li)});
+function show(t){
+  cur=clamp(t,0,window.DURATION);scrub.value=cur;
+  timeEl.textContent=`${cur.toFixed(1)} / ${window.DURATION.toFixed(1)}`;
+  window.seek(cur);
+  const i=segIndex(cur);[...chap.querySelectorAll('button')].forEach((b,j)=>b.setAttribute('aria-current',j===i?'true':'false'));
+}
+function frame(now){if(!playing)return;cur+=(now-last)/1000;last=now;if(cur>=window.DURATION){cur=window.DURATION;pause()}show(cur);if(playing)requestAnimationFrame(frame)}
+function play(){if(cur>=window.DURATION-0.05)cur=0;playing=true;playBtn.textContent='暫停';last=performance.now();requestAnimationFrame(frame)}
+function pause(){playing=false;playBtn.textContent='播放'}
+playBtn.onclick=()=>playing?pause():play();
+scrub.oninput=()=>{pause();show(parseFloat(scrub.value))};
+document.getElementById('prev').onclick=()=>{poster=false;pause();const i=segIndex(cur-0.6);show(SEGS[i].a)};
+document.getElementById('next').onclick=()=>{poster=false;pause();const i=segIndex(cur)+1;show(i<SEGS.length?SEGS[i].a:window.DURATION)};
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'&&e.key!==' ')return;
+  if(e.key===' '&&e.target.tagName==='BUTTON'&&e.target!==playBtn)return;
+  if(e.key===' '){e.preventDefault();playBtn.click()}
+  else if(e.key==='ArrowRight'){document.getElementById('next').click()}
+  else if(e.key==='ArrowLeft'){document.getElementById('prev').click()}
+});
+// 開啟時先停在開場完成的畫面（不自動播放），按播放從頭開始
+let poster=true;
+const POSTER_T=7.6;
+show(POSTER_T);
+playBtn.onclick=()=>{if(poster){poster=false;cur=0}playing?pause():play()};
+scrub.addEventListener('input',()=>{poster=false});
+chap.addEventListener('click',()=>{poster=false});
+window.ready.then(()=>show(cur));
+</script>
+
+</html>

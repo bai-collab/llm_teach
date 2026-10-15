@@ -44,6 +44,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
 .chapters button{font-size:.88rem;padding:.3em .85em;border-color:rgba(239,233,216,.25);color:var(--chalk-dim)}
 .chapters button[aria-current="true"]{border-color:var(--yellow);color:var(--yellow)}
 .note{color:var(--chalk-dim);font-size:.85rem;margin:0}
+.works h2{font-family:var(--font-chalk);font-size:1.15rem;margin:0 0 6px;color:var(--yellow)}
+.works ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 16px}
+.works li{min-width:0}
+.works a{color:var(--chalk);text-decoration-color:var(--chalk-dim);text-underline-offset:3px}
+.works a:hover{color:var(--yellow)}
+.works span{display:block;color:var(--chalk-dim);font-size:.85rem}
 /* 舞台內文字 */
 .t-chalk{font-family:var(--font-chalk);fill:var(--chalk)}
 .t-body{font-family:var(--font-body);fill:var(--chalk)}
@@ -65,6 +71,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
     <span id="time">0.0 / 123.0</span>
   </div>
   <ul class="chapters" id="chapters"></ul>
+  <section class="works" aria-labelledby="works-h"><h2 id="works-h">影片中的作品</h2><ul id="works"></ul></section>
   <p class="note">鍵盤：空白鍵播放／暫停，左右方向鍵切換段落。畫面只由時間決定，可用 window.seek(t) 逐格輸出成影片。</p>
 </div>
 
@@ -272,17 +279,26 @@ function s6(t){
   if(t>=69) g+=helper(1300,800,'var(--orange)','照做',ease(P(t,69,69.8)),0.9);
   return g;
 }
+// 成果牆的作品與公開連結（頁面下方的作品清單也讀這裡）
+const WORKS=[
+  ['臆測五階段','學生用 Scratch 自學五階段','https://github.com/bai-collab/osep_math'],
+  ['嘉義互動地圖','社會科闖關的數位教具','https://bai-collab.github.io/Mini-Taiwan-Pulse/'],
+  ['閱讀路網圖','北園六年閱讀 PBL 知識地圖','https://bai-collab.github.io/pyes-reading-rock-2026/pbl-pathways.html'],
+  ['教師儀表板','作答紀錄＋AI 分析助手','https://github.com/bai-collab/teacher_UI']
+];
 function s7(t){
-  const tiles=[['臆測五階段教案','學生自己找出倍數規律'],['嘉義地圖闖關','小小地理偵探・五關'],['閱讀路網圖','北園閱讀 PBL 路線'],['教師儀表板','一眼看全班積木作答']];
-  let g=`<text x="800" y="110" text-anchor="middle" class="t-chalk" style="font-size:44px">都是從一句話開始的</text>`;
+  const tiles=WORKS;
+  let g=`<text x="800" y="100" text-anchor="middle" class="t-chalk" style="font-size:44px">都是從一句話開始的</text>
+    <text x="800" y="145" text-anchor="middle" class="t-body" style="font-size:22px;fill:var(--chalk-dim)" opacity="${ease(P(t,74.5,75.5))}">點卡片可開啟作品</text>`;
   tiles.forEach((c,i)=>{
     const x=P(t,72.3+i*0.7,73.1+i*0.7);
     const col=i%2, row=Math.floor(i/2);
     const tx=170+col*650, ty=lerp(60,170+row*230,back(x));
-    g+=`<g transform="translate(${tx} ${ty})" opacity="${ease(x)}">
+    g+=`<a href="${esc(c[2])}" target="_blank" rel="noopener" aria-label="開啟作品：${esc(c[0])}"><g transform="translate(${tx} ${ty})" opacity="${ease(x)}" style="cursor:pointer">
       <rect width="610" height="190" rx="12" fill="rgba(239,233,216,.05)" stroke="var(--chalk)" stroke-width="3"/>
       <text x="34" y="82" class="t-chalk" style="font-size:44px;fill:var(--yellow)">${esc(c[0])}</text>
-      <text x="34" y="140" class="t-body" style="font-size:26px;fill:var(--chalk-dim)">${esc(c[1])}</text></g>`;
+      <text x="34" y="140" class="t-body" style="font-size:26px;fill:var(--chalk-dim)">${esc(c[1])}</text>
+      <text x="576" y="166" text-anchor="end" class="t-body" style="font-size:20px;fill:var(--chalk-dim)">開啟作品 ›</text></g></a>`;
   });
   const end=ease(P(t,76.5,77.8));
   g+=`<text x="800" y="790" text-anchor="middle" class="t-chalk" style="font-size:58px;font-weight:700;fill:var(--yellow)" opacity="${end}">你也可以從一句話開始</text>`;
@@ -440,6 +456,7 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='ArrowRight'){document.getElementById('next').click()}
   else if(e.key==='ArrowLeft'){document.getElementById('prev').click()}
 });
+document.getElementById('works').innerHTML=WORKS.map(w=>`<li><a href="${esc(w[2])}" target="_blank" rel="noopener">${esc(w[0])}</a><span>${esc(w[1])}</span></li>`).join('');
 // 開啟時先停在開場完成的畫面（不自動播放），按播放從頭開始
 let poster=true;
 const POSTER_T=7.5;
