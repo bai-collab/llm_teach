@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI 協作群島</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* 版面：3D 群島佔滿畫面；左上 HUD、右上按鈕、中下互動提示、右側（手機為下方）資料卡；黑板外觀 */
+:root{
+  --board:#23392f; --board-deep:#1a2b23; --chalk:#efe9d8; --chalk-dim:#a9b3a6;
+  --yellow:#f2c14e; --orange:#e8875b; --blue:#7fb6d9; --green:#8fd18a; --red:#e66a5c;
+  --font-chalk:"LXGW WenKai TC","Kaiti TC","DFKai-SB","BiauKai",serif;
+  --font-body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;background:var(--board-deep);color:var(--chalk);font-family:var(--font-body);overflow:hidden}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.glass{background:rgba(26,43,35,.86);border:1.5px solid rgba(239,233,216,.25);border-radius:12px;backdrop-filter:blur(4px)}
+#hud{position:fixed;left:calc(12px + env(safe-area-inset-left,0px));top:calc(12px + env(safe-area-inset-top,0px));padding:10px 14px;display:flex;flex-direction:column;gap:4px;max-width:min(320px,60vw)}
+#hud .t{font-family:var(--font-chalk);font-size:1.15rem;color:var(--yellow)}
+#hud .s{font-size:.85rem;color:var(--chalk-dim)}
+#badges{display:flex;gap:6px;margin-top:2px}
+.bd{width:26px;height:26px;border-radius:50%;border:2px dashed var(--chalk-dim);display:grid;place-items:center;font-size:.8rem;color:var(--chalk-dim)}
+.bd.on{border:2px solid var(--yellow);color:var(--board-deep);background:var(--yellow)}
+#tools{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));top:calc(12px + env(safe-area-inset-top,0px));display:flex;gap:8px}
+button{font:inherit;color:var(--chalk);background:rgba(26,43,35,.86);border:1.5px solid rgba(239,233,216,.35);border-radius:999px;padding:.45em 1em;cursor:pointer}
+button:hover{border-color:var(--yellow);color:var(--yellow)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+button.primary{border-color:var(--yellow);color:var(--yellow)}
+#prompt{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:10px 18px;font-family:var(--font-chalk);font-size:1.1rem;white-space:nowrap}
+#prompt b{color:var(--yellow)}
+#toast{position:fixed;left:50%;top:calc(18px + env(safe-area-inset-top,0px));transform:translateX(-50%);padding:10px 18px;font-family:var(--font-chalk);font-size:1.05rem;max-width:min(560px,84vw);text-align:center}
+#panel{position:fixed;right:0;top:0;bottom:0;width:min(440px,42vw);padding:calc(20px + env(safe-area-inset-top,0px)) 22px 22px;box-sizing:border-box;overflow-y:auto;border-radius:16px 0 0 16px;display:flex;flex-direction:column;gap:12px}
+#panel h2{font-family:var(--font-chalk);font-size:1.6rem;margin:0;color:var(--yellow);text-wrap:balance}
+#panel .kind{font-size:.8rem;color:var(--chalk-dim);letter-spacing:.05em}
+#panel p{margin:0;line-height:1.7}
+#panel .ex{border-left:3px solid var(--yellow);padding-left:10px;color:var(--chalk-dim)}
+#panel .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+#panel a.btn{color:var(--board-deep);background:var(--yellow);border-radius:999px;padding:.45em 1.1em;text-decoration:none;font-weight:700}
+#list{position:fixed;inset:0;display:grid;place-items:center;background:rgba(10,18,14,.6);padding:16px}
+#list .box{width:min(640px,100%);max-height:86vh;overflow-y:auto;padding:22px;box-sizing:border-box}
+#list h2{font-family:var(--font-chalk);margin:0 0 6px}
+#list h3{font-family:var(--font-chalk);color:var(--yellow);margin:16px 0 6px;font-size:1.15rem}
+#list ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+#list li{display:flex;justify-content:space-between;gap:10px;align-items:center}
+#list a{color:var(--chalk)}
+#list .st{font-size:.82rem;color:var(--chalk-dim);white-space:nowrap}
+#intro{position:fixed;inset:0;display:grid;place-items:center;background:rgba(10,18,14,.7);padding:16px}
+#intro .box{width:min(560px,100%);padding:26px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px}
+#intro h1{font-family:var(--font-chalk);margin:0;font-size:2rem;color:var(--yellow)}
+#intro p{margin:0;line-height:1.7}
+#intro kbd{border:1px solid var(--chalk-dim);border-radius:5px;padding:0 6px;font-family:var(--font-body)}
+#stick{position:fixed;left:calc(24px + env(safe-area-inset-left,0px));bottom:calc(24px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;border:2px solid rgba(239,233,216,.35);background:rgba(26,43,35,.5);touch-action:none}
+#knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(242,193,78,.75)}
+#act{position:fixed;right:calc(24px + env(safe-area-inset-right,0px));bottom:calc(36px + env(safe-area-inset-bottom,0px));width:84px;height:84px;border-radius:50%;font-family:var(--font-chalk);font-size:1.1rem}
+@media (max-width:700px){
+  #panel{left:0;right:0;top:auto;width:auto;max-height:62vh;border-radius:16px 16px 0 0;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+  #hud{max-width:58vw}
+  #toast{top:calc(118px + env(safe-area-inset-top,0px))}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="scene" tabindex="-1" aria-label="AI 協作群島 3D 地圖"></canvas>
+
+<div id="hud" class="glass" role="status" aria-live="polite">
+  <div class="t" id="hudIsland">第一島：認識 AI 協作</div>
+  <div class="s" id="hudTask">任務：和五個 AI 小幫手說話</div>
+  <div id="badges" aria-label="徽章"></div>
+</div>
+<div id="tools">
+  <button type="button" id="btnList">地圖清單</button>
+  <button type="button" id="btnHelp">說明</button>
+</div>
+<div id="toast" class="glass" hidden></div>
+<div id="prompt" class="glass" hidden></div>
+<aside id="panel" class="glass" hidden aria-labelledby="panelTitle"></aside>
+<div id="stick" hidden aria-hidden="true"><div id="knob"></div></div>
+<button type="button" id="act" hidden>查看</button>
+
+<div id="list" hidden role="dialog" aria-modal="true" aria-labelledby="listTitle">
+  <div class="box glass">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2 id="listTitle">地圖清單</h2><button type="button" id="btnListClose">關閉</button></div>
+    <p style="margin:0;color:var(--chalk-dim);font-size:.9rem">不想走路也可以直接從這裡打開每一份資料。</p>
+    <div id="listBody"></div>
+  </div>
+</div>
+
+<div id="intro" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+  <div class="box glass">
+    <h1 id="introTitle">AI 協作群島</h1>
+    <p>你是這座群島的導演。四座小島對應四個單元；走到發光的講台或小幫手旁邊就能查看。完成一座島的任務，通往下一座島的橋就會亮起來。</p>
+    <p>操作：<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 或方向鍵移動，<kbd>E</kbd> 或空白鍵查看；手機用左下搖桿和右下按鈕。</p>
+    <p style="color:var(--chalk-dim);font-size:.9rem">四座島都開放了；完成一座島，下一座的橋才會亮。</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="primary" id="btnStart">開始探索</button><button type="button" id="btnReset">重新開始進度</button></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ===== 內容（地圖清單、講台與小幫手共用）=====
+const SITE='https://bai-collab.github.io/llm_teach/';
+const GH='https://github.com/bai-collab/llm_teach/blob/main/lessons/';
+const STATIONS=[
+  {id:'s1a',island:1,pos:[-18,-14],kind:'動畫',title:'老師當導演',text:'AI 不是替你做事，而是你當導演、AI 當小幫手。這支動畫走一遍跟 AI 一起備課的流程。',url:SITE+'animations/teacher-as-director/'},
+  {id:'s1b',island:1,pos:[2,-22],kind:'動畫',title:'教師儀表板導覽',text:'找學生、看作答時間軸，按下送出才請 AI 分析；回答附引用，老師核對後再採用。',url:SITE+'animations/teacher-dashboard/'},
+  {id:'s1c',island:1,pos:[20,-14],kind:'動畫',title:'闖關教材製作',text:'用 Claude Code 把課本單元做成 2D＋3D 闖關：先出規格、老師核准、再驗收。',url:SITE+'animations/quest-material/'},
+  {id:'s2a',island:2,pos:[66,10],kind:'講義',title:'01 什麼是 Harness',text:'模型外面那一層：上下文、工具、護欄、狀態、驗證。',url:GH+'01-what-is-a-harness.md'},
+  {id:'s2b',island:2,pos:[96,18],kind:'動畫',title:'為什麼要換家審查',text:'答案地形、局部解與盲點。你現在腳下就是那片地形！',url:SITE+'animations/review-landscape/'},
+  {id:'s3a',island:3,pos:[84,118],kind:'動畫',title:'本工作區的 Harness',text:'十段動畫走一遍：分類、翻筆記、路線圖、老師核准、派工、驗證、記錄與交接。',url:SITE+'animations/harness-tour/'},
+  {id:'s3b',island:3,pos:[96,123],kind:'講義',title:'02 本機 Harness',text:'Adaptive Loop、Route Plan、三個執行者分工與驗證預算。',url:GH+'02-local-harness-adaptive-loop.md'},
+  {id:'s3c',island:3,pos:[108,123],kind:'講義',title:'03 eduHarness Skill',text:'Skill 套件怎麼讓同一種工作可以重複、可以驗證。',url:GH+'03-eduharness-skills-workflow.md'},
+  {id:'s3d',island:3,pos:[119,116],kind:'講義',title:'04 eduHarness_Nooa',text:'雲端版與 Registry v3 雙層治理。',url:GH+'04-eduharness-nooa-cloud-registry-v3.md'},
+  {id:'s4a',island:4,pos:[-12,118],kind:'講義',title:'05 Claude Code Mod Hook',text:'Hook 在事件管線中插入檢查：收到事件、決定要不要改、再交給下一步。',url:GH+'05-claude-code-mod-hook-flow.md'},
+  {id:'s4b',island:4,pos:[12,118],kind:'講義',title:'06 延伸專案',text:'瀏覽器端模型、教師工作台等可以拿來當課堂案例的專案。',url:GH+'06-related-llm-projects.md'},
+  {id:'s2c',island:2,pos:[128,-14],kind:'講義',title:'07 AI Agent 架構',text:'Harness → Agent → 核心循環 → Hooks。',url:GH+'07-ai-agent-architecture-v4-1.md'}
+];
+const ROLES=[
+  {id:'r1',name:'加快速度',color:0xf2c14e,line:'我負責把你已經想好的事做快一點。',ex:'例：十分鐘排好兩節課的流程草稿。'},
+  {id:'r2',name:'協助發想',color:0xe8875b,line:'我會四處找資料，一次丟出很多點子。',ex:'例：一次想出二十種倍數單元的引起動機，你來挑。'},
+  {id:'r3',name:'協助分析',color:0x8fd18a,line:'雜亂的資料交給我，我整理出脈絡。',ex:'例：把書單、學習單、週次表排成一張路網圖。'},
+  {id:'r4',name:'協助批判',color:0xe66a5c,line:'我專門挑毛病、找反例。',ex:'例：指出評量題超出五年級的先備知識。'},
+  {id:'r5',name:'協助整理',color:0x7fb6d9,line:'會議紀錄、筆記丟給我，我變成清楚的清單。',ex:'例：把教學會議紀錄整理成待辦清單。'}
+];
+const NPC2=[
+  {id:'n1',pos:[84,8],color:0xe8875b,name:'作者 AI',line:'我覺得這裡就是最好的答案了，四周都是上坡啊。'},
+  {id:'n2',pos:[86,1],color:0xf3b08a,name:'同家族審查者',line:'我也這麼覺得，沒問題！（我們的想法本來就很像。）'},
+  {id:'n4',pos:[100,80],color:0xe8875b,name:'流程導覽員',line:'這座島的石板寫著 Harness 的六個步驟，但被打亂了。照正確順序踩亮它們，路線圖就會連起來！'},
+  {id:'n3',pos:[103,-12],color:0x7fb6d9,name:'另一家審查者',line:'我從另一邊看過來：山脊東邊還有更低的地方喔，翻過去看看！'}
+];
+const ISLANDS=[
+  {n:1,name:'第一島：認識 AI 協作',task:'和五個 AI 小幫手說話'},
+  {n:2,name:'第二島：為什麼要這樣管 AI',task:'走到最深的谷，插旗的地方'},
+  {n:3,name:'第三島：本工作區怎麼做',task:'依正確順序踩亮六塊石板'},
+  {n:4,name:'第四島：動手改造工具',task:'在 Hook 閘門前決定放行或擋下'}
+];
+// ===== 進度（只存在這台瀏覽器）=====
+const KEY='aiIslands.v1';
+let S={talked:[],visited:[],badges:[]};
+try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(v&&typeof v==='object'){const arr=a=>Array.isArray(a)?a.filter(x=>typeof x==='string'):[];S={talked:arr(v.talked),visited:arr(v.visited),badges:arr(v.badges)}}}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const has=(arr,id)=>S[arr].includes(id);
+const add=(arr,id)=>{if(!has(arr,id)){S[arr].push(id);save();return true}return false};
+
+// ===== 世界高度 =====
+const ss=(a,b,x)=>{const k=Math.min(1,Math.max(0,(x-a)/(b-a)));return k*k*(3-2*k)};
+const ga=(x,z,cx,cz,s)=>Math.exp(-((x-cx)**2+(z-cz)**2)/(2*s*s));
+function L2(lx,lz){let h=11-7*ga(lx,lz,-16,4,8)-10*ga(lx,lz,20,-6,11)+7*Math.exp(-((lx-3)**2)/(2*16))+0.4*Math.sin(lx*0.3)*Math.cos(lz*0.25);
+  h-=6*Math.exp(-(lz*lz)/(2*30))*ss(-24,-40,lx);return h}
+const ISL3=[100,100], ISL4=[0,100];
+function H(x,z){
+  const d1=Math.hypot(x,z),d2=Math.hypot(x-100,z),d3=Math.hypot(x-ISL3[0],z-ISL3[1]),d4=Math.hypot(x-ISL4[0],z-ISL4[1]),dL=Math.hypot(x-50,z-50);
+  let h=-4;
+  h=Math.max(h,-4+(5.6+0.3*Math.sin(x*0.2)*Math.cos(z*0.2))*ss(38,30,d1));
+  const m2=ss(46,38,d2); if(m2>0) h=Math.max(h,-4+(L2(x-100,z)+4)*m2);
+  h=Math.max(h,-4+5.4*ss(34,26,d3),-4+5.4*ss(34,26,d4),-4+9*ss(9,5,dL));
+  return h;
+}
+const DEEP=[120,-6];
+// ===== 第三島：依 Harness 流程踩亮石板 =====
+const FLOW=[
+  {name:'分類',why:'先判斷這是簡單、標準還是複雜的任務。'},
+  {name:'翻筆記',why:'動工前查錯誤紀錄與知識庫，命中的教訓當硬約束。'},
+  {name:'路線圖',why:'寫出每個節點：做什麼、誰做、怎麼驗證。'},
+  {name:'老師核准',why:'老師的決定是最高權限，核准後才動工。'},
+  {name:'派工',why:'Claude 規劃、Codex 動手、AGY 審查。'},
+  {name:'驗證',why:'review-loop 外審；沒有收據就是審查未完成。'}
+];
+// 石板故意不照順序擺放
+const STONES=[[88,92],[112,90],[96,112],[110,108],[86,106],[102,98]].map((p,i)=>({i,x:p[0],z:p[1]}));
+const STONE_ORDER=[4,0,5,2,3,1]; // STONES[k] 對應 FLOW[STONE_ORDER[k]]
+let flowK=0, flowLast=-1;
+// ===== 第四島：Hook 閘門 =====
+const ACTIONS=[
+  {text:'讀取課程講義 README.md',ok:true,why:'只是讀，不會改壞任何東西，放行。'},
+  {text:'刪除整個專案資料夾',ok:false,why:'不可逆的刪除，要先停下來問老師。'},
+  {text:'把含 API 金鑰的 .env 上傳到網路',ok:false,why:'秘密不能外流，一律擋下。'},
+  {text:'執行測試，看程式有沒有壞',ok:true,why:'可重跑的檢查，安全，放行。'},
+  {text:'強制推送覆蓋 GitHub 主分支',ok:false,why:'會改到外部、而且難以復原，要老師同意。'},
+  {text:'測試還沒全綠，就宣告「已完成」',ok:false,why:'沒有證據就不能說完成，擋下來先驗證。'}
+];
+let hookQ=[0,1,2,3,4,5], hookAnim=null;
+
+// 橋：島一→島二（可走），島二→島三、島三→島四（建造中）
+const BRIDGES=[{a:[31,0],b:[61,0],open:()=>has('badges','b1'),w:5},{a:[100,41],b:[100,75],open:()=>has('badges','b2'),w:5},{a:[75,100],b:[25,100],open:()=>has('badges','b3'),w:5}];
+function onBridge(x,z){for(const B of BRIDGES){const dx=B.b[0]-B.a[0],dz=B.b[1]-B.a[1],L=Math.hypot(dx,dz),t=((x-B.a[0])*dx+(z-B.a[1])*dz)/(L*L),px=B.a[0]+dx*t,pz=B.a[1]+dz*t;if(t>=0&&t<=1&&Math.hypot(x-px,z-pz)<B.w/2)return {B,t}}return null}
+function bridgeY(B,t){return Math.max(H(...B.a),0.8)*(1-t)+Math.max(H(...B.b),0.8)*t+0.5}
+function groundY(x,z){const b=onBridge(x,z);if(b&&H(x,z)<1)return bridgeY(b.B,b.t);return H(x,z)}
+function walkable(x,z){const b=onBridge(x,z);if(b)return b.B.open()||H(x,z)>0.9;return H(x,z)>0.9}
+
+// ===== three.js 場景 =====
+const canvas=document.getElementById('scene');
+let THREE_OK=!!window.THREE;let renderer,scene,camera;
+try{renderer=new THREE.WebGLRenderer({canvas,antialias:true})}catch(e){THREE_OK=false}
+const toastEl=document.getElementById('toast');let toastT=0;
+function toast(msg,sec=3.5){toastEl.textContent=msg;toastEl.hidden=false;toastT=sec}
+if(!THREE_OK){toast('這台裝置無法顯示 3D，請用右上角「地圖清單」直接打開資料。',9999)}
+const objs={};
+if(THREE_OK){
+  renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  scene=new THREE.Scene();scene.background=new THREE.Color(0x1a2b23);scene.fog=new THREE.Fog(0x1a2b23,150,320);
+  camera=new THREE.PerspectiveCamera(50,1,0.5,800);
+  scene.add(new THREE.HemisphereLight(0xdcefff,0x4a3d2a,0.62));
+  const sun=new THREE.DirectionalLight(0xfff0d8,0.95);sun.position.set(80,140,60);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+  Object.assign(sun.shadow.camera,{left:-150,right:150,top:150,bottom:-150,near:10,far:500});sun.shadow.bias=-0.0006;scene.add(sun);scene.add(sun.target);sun.target.position.set(50,0,30);
+  // 地形：低多邊形平面著色
+  const X0=-50,X1=150,Z0=-50,Z1=140,N=200,M=Math.round(N*(Z1-Z0)/(X1-X0));
+  const pos=[],col=[],cs={sand:new THREE.Color('#e3cf98'),grass:new THREE.Color('#8fbf5a'),grass2:new THREE.Color('#a3cc6a'),rock:new THREE.Color('#9a8c76'),build:new THREE.Color('#6f7f74'),lo:new THREE.Color('#2f9e83'),mid:new THREE.Color('#e9c46a'),hi:new THREE.Color('#d9774b'),bed:new THREE.Color('#3b5a52'),plaza:new THREE.Color('#a9c48a'),plaza2:new THREE.Color('#b9d29a'),shop:new THREE.Color('#d8c08e'),shop2:new THREE.Color('#e3cfa2')};
+  const colorAt=(x,z,h)=>{
+    if(h<0.3)return cs.bed; if(h<1.2)return cs.sand;
+    if(Math.hypot(x-100,z)<44){const k=Math.min(1,Math.max(0,(h-1)/16));return k<0.45?cs.lo.clone().lerp(cs.mid,k/0.45):cs.mid.clone().lerp(cs.hi,(k-0.45)/0.55)}
+    if(Math.hypot(x-ISL3[0],z-ISL3[1])<36)return (Math.floor(x/5)+Math.floor(z/5))%2?cs.plaza:cs.plaza2;
+    if(Math.hypot(x-ISL4[0],z-ISL4[1])<36)return (Math.floor(x/5)+Math.floor(z/5))%2?cs.shop:cs.shop2;
+    if(Math.hypot(x-50,z-50)<10)return cs.rock;
+    return (Math.floor(x/6)+Math.floor(z/6))%2?cs.grass:cs.grass2;
+  };
+  for(let j=0;j<M;j++)for(let i=0;i<N;i++){
+    const x0=X0+i*(X1-X0)/N,z0=Z0+j*(Z1-Z0)/M,x1=x0+(X1-X0)/N,z1=z0+(Z1-Z0)/M;
+    const q=[[x0,z0],[x1,z0],[x1,z1],[x0,z1]].map(p=>[p[0],H(p[0],p[1]),p[1]]);
+    for(const tr of [[0,3,1],[1,3,2]]){const a=q[tr[0]],b=q[tr[1]],c=q[tr[2]];const cc=colorAt((a[0]+b[0]+c[0])/3,(a[2]+b[2]+c[2])/3,(a[1]+b[1]+c[1])/3);for(const v of [a,b,c]){pos.push(...v);col.push(cc.r,cc.g,cc.b)}}
+  }
+  const tg=new THREE.BufferGeometry();tg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));tg.setAttribute('color',new THREE.Float32BufferAttribute(col,3));tg.computeVertexNormals();
+  const land=new THREE.Mesh(tg,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:0.95}));land.receiveShadow=true;land.castShadow=true;scene.add(land);
+  // 海
+  const sea=new THREE.Mesh(new THREE.PlaneGeometry(600,600),new THREE.ShaderMaterial({transparent:true,uniforms:{uT:{value:0}},
+    vertexShader:'varying vec3 vP;void main(){vec4 w=modelMatrix*vec4(position,1.0);vP=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
+    fragmentShader:'uniform float uT;varying vec3 vP;void main(){float r=sin(vP.x*0.35+uT*1.3)*sin(vP.z*0.3-uT*1.1);vec3 c=mix(vec3(0.12,0.36,0.5),vec3(0.2,0.55,0.66),0.5+0.5*sin(vP.x*0.02+vP.z*0.03));c+=vec3(0.8)*smoothstep(0.86,1.0,r)*0.18;gl_FragColor=vec4(c,0.9);}'}));
+  sea.rotation.x=-Math.PI/2;sea.position.y=0.35;scene.add(sea);objs.sea=sea;
+  // 橋
+  objs.bridges=BRIDGES.map(B=>{const g=new THREE.Group();const dx=B.b[0]-B.a[0],dz=B.b[1]-B.a[1],L=Math.hypot(dx,dz),n=Math.round(L/1.6);
+    for(let k=0;k<n;k++){const t=(k+0.5)/n,p=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.35,B.w),new THREE.MeshStandardMaterial({color:0x9a6b45,flatShading:true}));p.position.set(B.a[0]+dx*t,bridgeY(B,t)-0.2,B.a[1]+dz*t);p.rotation.y=-Math.atan2(dz,dx);p.castShadow=p.receiveShadow=true;g.add(p)}
+    scene.add(g);return g});
+  // 建造中告示與燈塔
+  function sign(x,z,text){const c=document.createElement('canvas');c.width=256;c.height=96;const k=c.getContext('2d');k.fillStyle='#23392f';k.fillRect(0,0,256,96);k.strokeStyle='#f2c14e';k.lineWidth=6;k.strokeRect(3,3,250,90);k.fillStyle='#efe9d8';k.font='bold 40px "Noto Sans TC",sans-serif';k.textAlign='center';k.textBaseline='middle';k.fillText(text,128,50);
+    const g=new THREE.Group();const post=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,5,6),new THREE.MeshStandardMaterial({color:0x6e4c31}));post.position.y=2.5;const board=new THREE.Mesh(new THREE.PlaneGeometry(7,2.6),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),side:THREE.DoubleSide}));board.position.y=5.4;g.add(post,board);g.position.set(x,Math.max(H(x,z),1),z);scene.add(g);return g}
+  objs.signs=[sign(ISL3[0]+18,ISL3[1]-16,'第三島'),sign(ISL4[0]-18,ISL4[1]-16,'第四島')];
+  const lh=new THREE.Group();const tower=new THREE.Mesh(new THREE.CylinderGeometry(1.6,2.4,12,10),new THREE.MeshStandardMaterial({color:0xefe9d8,flatShading:true}));tower.position.y=6;const top=new THREE.Mesh(new THREE.ConeGeometry(2.4,3,10),new THREE.MeshStandardMaterial({color:0xe66a5c,flatShading:true}));top.position.y=13.5;lh.add(tower,top);lh.traverse(o=>o.castShadow=true);lh.position.set(50,H(50,50),50);scene.add(lh);objs.lhTop=top;
+  const beam=new THREE.Mesh(new THREE.ConeGeometry(6,40,16,1,true),new THREE.MeshBasicMaterial({color:0xf2c14e,transparent:true,opacity:0.18,side:THREE.DoubleSide,depthWrite:false}));beam.rotation.z=Math.PI/2;beam.position.set(20,13.5,0);const beamG=new THREE.Group();beamG.add(beam);beamG.position.set(50,H(50,50),50);beamG.visible=false;scene.add(beamG);objs.beam=beamG;
+  // 樹（第一島外圍）
+  const tg2=new THREE.ConeGeometry(1.4,4,6);tg2.translate(0,2,0);const trees=new THREE.InstancedMesh(tg2,new THREE.MeshStandardMaterial({color:0x3f7a45,flatShading:true}),60);let nt=0;const m4=new THREE.Matrix4();
+  for(let k=0;k<120&&nt<60;k++){const a=k*2.399,r=24+(k%7)*1.4,x=Math.cos(a)*r,z=Math.sin(a)*r;if(Math.abs(z)<6&&x>0)continue;if(H(x,z)<2)continue;m4.makeTranslation(x,H(x,z),z);trees.setMatrixAt(nt++,m4)}
+  trees.count=nt;trees.castShadow=true;scene.add(trees);
+}
+// ===== 角色與小幫手造型 =====
+function makeTeacher(){const g=new THREE.Group();const m=c=>new THREE.MeshStandardMaterial({color:c,flatShading:true,roughness:0.8});
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.9,1.3,2.6,8),m(0xefe9d8));body.position.y=1.5;
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.85,12,10),m(0xf3dcc0));head.position.y=3.4;
+  const badge=new THREE.Mesh(new THREE.BoxGeometry(1,0.45,0.1),m(0xf2c14e));badge.position.set(0,2.1,1.05);
+  const eyeM=m(0x1a2b23),e1=new THREE.Mesh(new THREE.SphereGeometry(0.11,6,6),eyeM),e2=e1.clone();e1.position.set(-0.28,3.5,0.75);e2.position.set(0.28,3.5,0.75);
+  g.add(body,head,badge,e1,e2);g.traverse(o=>o.castShadow=true);return g}
+function makeBot(color){const g=new THREE.Group();const mat=new THREE.MeshStandardMaterial({color,flatShading:true,roughness:0.6});
+  const b=new THREE.Mesh(new THREE.BoxGeometry(2,1.7,1.6),mat);b.position.y=1.5;const ant=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.8,6),mat);ant.position.y=2.75;const tip=new THREE.Mesh(new THREE.SphereGeometry(0.22,8,8),mat);tip.position.y=3.2;
+  const eyeM=new THREE.MeshBasicMaterial({color:0x1a2b23}),e1=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,8),eyeM),e2=e1.clone();e1.position.set(-0.42,1.65,0.81);e2.position.set(0.42,1.65,0.81);
+  const check=new THREE.Mesh(new THREE.TorusGeometry(0.5,0.12,6,16),new THREE.MeshBasicMaterial({color:0x8fd18a}));check.position.y=4.1;check.visible=false;g.userData.check=check;
+  g.add(b,ant,tip,e1,e2,check);g.traverse(o=>{if(o.isMesh)o.castShadow=true});return g}
+function makePillar(color){const g=new THREE.Group();const p=new THREE.Mesh(new THREE.CylinderGeometry(0.8,1.1,3.2,8),new THREE.MeshStandardMaterial({color:0xd9d2bf,flatShading:true}));p.position.y=1.6;
+  const gem=new THREE.Mesh(new THREE.OctahedronGeometry(0.9,0),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:0.6,flatShading:true}));gem.position.y=4.3;g.userData.gem=gem;g.add(p,gem);g.traverse(o=>{if(o.isMesh)o.castShadow=true});return g}
+function makeFlag(){const g=new THREE.Group();const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,8,8),new THREE.MeshStandardMaterial({color:0xefe9d8}));pole.position.y=4;
+  const cloth=new THREE.Mesh(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,8,0),new THREE.Vector3(3.6,7,0),new THREE.Vector3(0,6,0)]),new THREE.MeshStandardMaterial({color:0xf2c14e,side:THREE.DoubleSide}));cloth.geometry.computeVertexNormals();g.add(pole,cloth);g.traverse(o=>o.castShadow=true);return g}
+const things=[];// 可互動物件：{type,id,x,z,obj,data}
+if(THREE_OK){
+  objs.player=makeTeacher();scene.add(objs.player);
+  STATIONS.forEach(s=>{const o=makePillar(s.kind==='動畫'?0xf2c14e:0x7fb6d9);o.position.set(s.pos[0],H(...s.pos),s.pos[1]);scene.add(o);things.push({type:'station',id:s.id,x:s.pos[0],z:s.pos[1],obj:o,data:s})});
+  ROLES.forEach((r,i)=>{const o=makeBot(r.color);scene.add(o);things.push({type:'role',id:r.id,x:0,z:0,obj:o,data:r,home:[-14+i*7,8+(i%2)*6],phase:i*1.3})});
+  NPC2.forEach(n=>{const o=makeBot(n.color);o.position.set(n.pos[0],H(...n.pos),n.pos[1]);o.rotation.y=-Math.PI/2;scene.add(o);things.push({type:'npc',id:n.id,x:n.pos[0],z:n.pos[1],obj:o,data:n})});
+  objs.stones=STONES.map((st,k)=>{const c=document.createElement('canvas');c.width=256;c.height=256;const g2=c.getContext('2d');g2.fillStyle='#d9d2bf';g2.beginPath();g2.arc(128,128,124,0,Math.PI*2);g2.fill();g2.fillStyle='#23392f';g2.font='bold 64px "Noto Sans TC",sans-serif';g2.textAlign='center';g2.textBaseline='middle';g2.fillText(FLOW[STONE_ORDER[k]].name,128,132);
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.6,0.5,20),new THREE.MeshStandardMaterial({color:0xbfb7a2,flatShading:true}));m.position.set(st.x,H(st.x,st.z)+0.2,st.z);m.receiveShadow=true;
+    const top=new THREE.Mesh(new THREE.CircleGeometry(2.3,24),new THREE.MeshStandardMaterial({map:new THREE.CanvasTexture(c),emissive:0xf2c14e,emissiveIntensity:0}));top.rotation.x=-Math.PI/2;top.position.y=0.27;m.add(top);m.userData.top=top;scene.add(m);return m});
+  objs.route=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineBasicMaterial({color:0xf2c14e}));scene.add(objs.route);
+  const belt=new THREE.Mesh(new THREE.BoxGeometry(40,0.6,4),new THREE.MeshStandardMaterial({color:0x3b4a44,flatShading:true}));belt.position.set(0,H(0,100)+0.3,100);belt.receiveShadow=true;scene.add(belt);
+  const gateM=new THREE.MeshStandardMaterial({color:0xe66a5c,flatShading:true});const g1=new THREE.Mesh(new THREE.BoxGeometry(0.8,7,0.8),gateM),g2b=g1.clone(),g3=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.8,5.6),gateM);g1.position.set(4,H(4,100)+3.5,97.4);g2b.position.set(4,H(4,100)+3.5,102.6);g3.position.set(4,H(4,100)+7,100);[g1,g2b,g3].forEach(m=>{m.castShadow=true;scene.add(m)});objs.gate=gateM;
+  objs.hookBox=new THREE.Mesh(new THREE.BoxGeometry(2.6,2.6,2.6),new THREE.MeshStandardMaterial({color:0xefe9d8,flatShading:true}));objs.hookBox.castShadow=true;scene.add(objs.hookBox);
+  const con=makePillar(0xe66a5c);con.position.set(0,H(0,108),108);scene.add(con);things.push({type:'hook',id:'hook',x:0,z:108,obj:con,data:{name:'Hook 閘門控制台'}});
+  objs.flag=makeFlag();objs.flag.position.set(DEEP[0],H(...DEEP),DEEP[1]);scene.add(objs.flag);
+  things.push({type:'flag',id:'flag',x:DEEP[0],z:DEEP[1],obj:objs.flag});
+}
+// ===== 玩家狀態 =====
+const P={x:-4,z:14,vx:0,vz:0,heading:Math.PI,walk:0,inPit:0,pitHinted:false,isl:1};
+const keys={};let stick={x:0,y:0};
+const islandAt=(x,z)=>Math.hypot(x-100,z)<40?2:Math.hypot(x-ISL3[0],z-ISL3[1])<30?3:Math.hypot(x-ISL4[0],z-ISL4[1])<30?4:Math.hypot(x,z)<34?1:0;
+// ===== UI =====
+const $=id=>document.getElementById(id);
+const panel=$('panel'),promptEl=$('prompt');let near=null,panelOpen=false;
+function renderHud(){
+  const isl=P.isl||1, I=ISLANDS[isl-1];
+  $('hudIsland').textContent=I.name;
+  let task=I.task;
+  if(isl===1){task=has('badges','b1')?'完成！東邊的橋已經亮了':`任務：和五個 AI 小幫手說話（${S.talked.length}/5）`}
+  if(isl===2){task=has('badges','b2')?'完成！南邊的橋已經亮了':'任務：走到最深的谷，插旗的地方'}
+  if(isl===3){task=has('badges','b3')?'完成！西邊的橋已經亮了':`任務：依順序踩亮石板（${flowK}/6）`}
+  if(isl===4){task=has('badges','b4')?'全部完成！燈塔亮了':`任務：Hook 閘門（剩 ${hookQ.length} 個動作）`}
+  $('hudTask').textContent=task;
+  $('badges').innerHTML=['b1','b2','b3','b4'].map((b,i)=>`<span class="bd${has('badges',b)?' on':''}" title="第${'一二三四'[i]}島徽章">${'一二三四'[i]}</span>`).join('');
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function openPanel(html){panel.innerHTML=html+'<div class="row"><button type="button" id="panelClose">關閉（Esc）</button></div>';panel.hidden=false;panelOpen=true;$('panelClose').onclick=closePanel;$('panelClose').focus()}
+function closePanel(){panel.hidden=true;panelOpen=false;canvas.focus&&canvas.focus()}
+function interact(){
+  if(panelOpen){closePanel();return}
+  if(!near)return;const t=near;
+  if(t.type==='station'){add('visited',t.id);const s=t.data;
+    openPanel(`<div class="kind">${esc(s.kind)}・第${'一二三四'[s.island-1]||s.island}島</div><h2 id="panelTitle">${esc(s.title)}</h2><p>${esc(s.text)}</p><div class="row"><a class="btn" href="${esc(s.url)}" target="_blank" rel="noopener">打開${esc(s.kind)}</a></div>`)}
+  if(t.type==='role'){const r=t.data;const first=add('talked',r.id);
+    openPanel(`<div class="kind">AI 小幫手</div><h2 id="panelTitle">${esc(r.name)}</h2><p>「${esc(r.line)}」</p><p class="ex">${esc(r.ex)}</p><p style="color:var(--chalk-dim);font-size:.9rem">已認識 ${S.talked.length}/5 種角色</p>`);
+    if(first&&S.talked.length===5&&add('badges','b1')){toast('拿到第一島徽章！東邊的橋亮起來了，過橋去第二島吧。',5)}}
+  if(t.type==='npc'){const n=t.data;openPanel(`<div class="kind">${esc(n.name)}</div><h2 id="panelTitle">${esc(n.name)}說</h2><p>「${esc(n.line)}」</p>`)}
+  if(t.type==='flag'){winIsland2()}
+  if(t.type==='hook'){openHook()}
+  renderHud();
+}
+function winIsland2(){
+  const first=add('badges','b2');renderHud();
+  openPanel(`<div class="kind">第二島完成</div><h2 id="panelTitle">你跳出局部解了！</h2>
+    <p>剛才的淺坑，四周都是上坡，很容易以為「這裡就是最好的」。作者和同家族的審查者站在一樣的位置、想法也相近，所以一起說沒問題。</p>
+    <p class="ex">另一家審查者從不同方向看，提醒你翻過山脊——這就是為什麼本工作區規定「誰做的，不由自己審」，而且要換不同家族的模型。</p>
+    <p style="color:var(--chalk-dim);font-size:.9rem">這片地形是比喻：AI 生成答案時並不是真的在滾球。換家審查不保證找到最好，只是降低一起錯的機會。</p>
+    <div class="row"><a class="btn" href="${SITE}animations/review-landscape/" target="_blank" rel="noopener">看 3D 動畫版</a></div>`);
+  if(first){celebrate();toast('拿到第二島徽章！南邊通往第三島的橋亮了。',5)}
+}
+function openHook(){
+  if(has('badges','b4')){openPanel('<div class="kind">Hook 閘門</div><h2 id="panelTitle">閘門已完成</h2><p>六個動作都判斷正確。Hook 就是在 AI 動手前插進來的檢查點：安全的放行，危險的擋下。</p>');return}
+  const a=ACTIONS[hookQ[0]];
+  openPanel(`<div class="kind">Hook 閘門・剩 ${hookQ.length} 個動作</div><h2 id="panelTitle">AI 想要：${esc(a.text)}</h2><p>你是 Hook，要在它動手前決定：</p><div class="row"><button type="button" class="primary" id="hookAllow">放行</button><button type="button" id="hookBlock">擋下</button></div>`);
+  $('hookAllow').onclick=()=>decideHook(true);$('hookBlock').onclick=()=>decideHook(false);$('hookAllow').focus();
+}
+function decideHook(allow){
+  const idx=hookQ[0],a=ACTIONS[idx],right=allow===a.ok;
+  hookAnim={idx,allow,t:0};hookQ.shift();if(!right)hookQ.push(idx);
+  let html=`<div class="kind">${right?'判斷正確':'再想想'}</div><h2 id="panelTitle">${right?'答對了':'這一個要再判斷一次'}</h2><p>${esc(a.text)}：${esc(a.why)}</p>`;
+  if(hookQ.length===0&&add('badges','b4')){html+='<p class="ex">六個動作都判斷正確，拿到第四島徽章！</p>';finale()}
+  else html+='<div class="row"><button type="button" class="primary" id="hookNext">下一個動作</button></div>';
+  openPanel(html);renderHud();const nb=$('hookNext');if(nb){nb.onclick=openHook;nb.focus()}
+}
+function finale(){celebrate(50,H(50,50)+16,50);toast('四座島全部完成！燈塔亮起來了。',6);
+  setTimeout(()=>openPanel(`<div class="kind">全部完成</div><h2 id="panelTitle">你走完了四座島</h2><p>一、老師當導演，AI 有五種角色。二、換一家 AI 審查，比較能跳出局部解。三、照流程走：分類、翻筆記、路線圖、老師核准、派工、驗證。四、Hook 在 AI 動手前擋下危險動作。</p><div class="row"><a class="btn" href="${SITE}" target="_blank" rel="noopener">打開課程地圖</a></div>`),1200)}
+function buildList(){
+  let h='';[1,2,3,4].forEach(i=>{h+=`<h3>${esc(ISLANDS[i-1].name)}</h3><ul>`;
+    STATIONS.filter(s=>s.island===i).forEach(s=>{h+=`<li><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.kind)}：${esc(s.title)}</a><span class="st">${has('visited',s.id)?'看過講台':'講台'}</span></li>`});
+    if(i===1){h+=`<li><span>任務：認識五種 AI 角色</span><span class="st">${S.talked.length}/5</span></li></ul><ul style="margin-top:8px">`;ROLES.forEach(r=>{h+=`<li style="display:block"><b>${esc(r.name)}</b>：${esc(r.line)}<br><span class="st">${esc(r.ex)}</span></li>`})}
+    if(i===2){h+=`<li><span>任務：走到最深的谷</span><span class="st">${has('badges','b2')?'完成':'未完成'}</span></li></ul><ul style="margin-top:8px">`;NPC2.forEach(n=>{h+=`<li style="display:block"><b>${esc(n.name)}</b>：「${esc(n.line)}」</li>`});h+=`<li style="display:block"><b>重點</b>：淺坑四周都是上坡，容易以為已經最好；同家族的審查者站在相近的位置，容易一起說沒問題。換不同家族的審查者，比較可能提出反例、跳出局部解。（地形是比喻；換家審查不保證找到最好，只是降低一起錯的機會。）</li>`}
+    if(i===3){h+=`<li><span>任務：依順序踩亮石板</span><span class="st">${has('badges','b3')?'完成':flowK+'/6'}</span></li></ul><ol style="margin:8px 0 0;padding-left:1.4em">`;FLOW.forEach(f=>{h+=`<li><b>${esc(f.name)}</b>：${esc(f.why)}</li>`});h+='</ol><ul>'}
+    if(i===4){h+=`<li><span>任務：Hook 閘門</span><span class="st">${has('badges','b4')?'完成':'剩 '+hookQ.length+' 個'}</span></li></ul><ul style="margin-top:8px"><li style="display:block"><b>重點</b>：唯讀、可重跑的檢查放行；刪除檔案、外流秘密、不可逆的外部變更、沒驗證就宣告完成，都要擋下來先問老師。</li>`}
+    h+='</ul>'});
+  $('listBody').innerHTML=h;
+}
+$('btnList').onclick=()=>{buildList();$('list').hidden=false;$('btnListClose').focus()};
+$('btnListClose').onclick=()=>{$('list').hidden=true;$('btnList').focus()};
+$('btnHelp').onclick=()=>{$('intro').hidden=false;$('btnStart').focus()};
+$('btnStart').onclick=()=>{$('intro').hidden=true;canvas.focus();toast(has('badges','b1')?'歡迎回來！你的進度還在。':'先去找附近的 AI 小幫手聊聊吧。')};
+$('btnReset').onclick=()=>{S={talked:[],visited:[],badges:[]};save();flowK=0;flowLast=-1;hookQ=[0,1,2,3,4,5];hookAnim=null;P.x=-4;P.z=14;renderHud();toast('進度已重新開始。')};
+addEventListener('keydown',e=>{
+  if(!$('intro').hidden||!$('list').hidden){if(e.key==='Escape'){if(!$('list').hidden){$('list').hidden=true;$('btnList').focus()}else{$('btnStart').click()}}return}
+  const k=e.key.toLowerCase();
+  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){keys[k]=true;e.preventDefault()}
+  if((k==='e'||k===' ')&&document.activeElement.tagName!=='BUTTON'&&document.activeElement.tagName!=='A'){e.preventDefault();interact()}
+  if(k==='escape'&&panelOpen)closePanel();
+});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
+// 觸控搖桿
+const isTouch=matchMedia('(pointer:coarse)').matches;
+if(isTouch){$('stick').hidden=false;$('act').hidden=false}
+$('act').onclick=interact;
+(()=>{const st=$('stick'),kn=$('knob');let id=null;
+  const set=(cx,cy)=>{const r=st.getBoundingClientRect(),dx=cx-(r.left+60),dy=cy-(r.top+60),m=Math.min(1,Math.hypot(dx,dy)/50),a=Math.atan2(dy,dx);stick={x:Math.cos(a)*m,y:Math.sin(a)*m};kn.style.transform=`translate(${stick.x*35}px,${stick.y*35}px)`};
+  st.addEventListener('pointerdown',e=>{id=e.pointerId;st.setPointerCapture(id);set(e.clientX,e.clientY)});
+  st.addEventListener('pointermove',e=>{if(e.pointerId===id)set(e.clientX,e.clientY)});
+  const end=()=>{id=null;stick={x:0,y:0};kn.style.transform=''};st.addEventListener('pointerup',end);st.addEventListener('pointercancel',end);})();
+
+// ===== 每格更新（遊戲以真實時間推進；step 可固定 dt 供測試）=====
+let clock=0;const confetti=[];
+function celebrate(cx=DEEP[0],cy=H(...DEEP)+8,cz=DEEP[1]){if(!THREE_OK)return;for(let k=0;k<80;k++){const m=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.4,0.1),new THREE.MeshBasicMaterial({color:[0xf2c14e,0xe8875b,0x7fb6d9,0x8fd18a][k%4]}));m.position.set(cx,cy,cz);m.userData.v=[(Math.random()-0.5)*14,10+Math.random()*10,(Math.random()-0.5)*14];scene.add(m);confetti.push(m)}}
+function step(dt){
+  clock+=dt;
+  // 輸入 → 移動方向（畫面向上＝-z）
+  let ix=(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0)+stick.x, iz=(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0)+stick.y;
+  if(panelOpen||!$('intro').hidden||!$('list').hidden){ix=0;iz=0}
+  const im=Math.hypot(ix,iz);if(im>1){ix/=im;iz/=im}
+  // 地形坡度：上坡變慢，陡坡會往下滑（第二島的淺坑會把人拉進去）
+  const e=0.4,gx=(H(P.x+e,P.z)-H(P.x-e,P.z))/(2*e),gz=(H(P.x,P.z+e)-H(P.x,P.z-e))/(2*e),slope=Math.hypot(gx,gz);
+  const uphill=(ix*gx+iz*gz);const speed=11*(uphill>0?Math.max(0.45,1-uphill*0.5):1);
+  let tvx=ix*speed,tvz=iz*speed;
+  const onB=onBridge(P.x,P.z)&&H(P.x,P.z)<1;
+  if(!onB&&slope>0.28){const k=Math.min(4,(slope-0.28)*9)*(im>0.1?0.25:1);tvx-=gx/slope*k;tvz-=gz/slope*k}
+  P.vx+= (tvx-P.vx)*Math.min(1,dt*8);P.vz+=(tvz-P.vz)*Math.min(1,dt*8);
+  const nx=P.x+P.vx*dt,nz=P.z+P.vz*dt;
+  if(walkable(nx,nz)){P.x=nx;P.z=nz}else if(walkable(nx,P.z)){P.x=nx;P.vz=0}else if(walkable(P.x,nz)){P.z=nz;P.vx=0}else{P.vx=P.vz=0;
+    const b=onBridge(nx,nz);if(b&&!b.B.open()&&toastT<=0)toast(b.B===BRIDGES[0]?'橋還沒亮：先和五個 AI 小幫手說話。':b.B===BRIDGES[1]?'橋還沒亮：先在第二島走到最深的谷。':'橋還沒亮：先在第三島踩亮全部石板。')}
+  if(im>0.1){P.heading=Math.atan2(ix,iz);P.walk+=dt*10}
+  const isl=islandAt(P.x,P.z);if(isl&&isl!==P.isl){P.isl=isl;renderHud();
+    if(isl===2&&!has('badges','b2'))toast('歡迎來到第二島：這座島本身就是一片「答案地形」，越低代表答案越好。',5);
+    if(isl===3&&!has('badges','b3'))toast('歡迎來到第三島：照 Harness 的流程順序，踩亮六塊石板。',5);
+    if(isl===4&&!has('badges','b4'))toast('歡迎來到第四島：走到紅色控制台，決定哪些 AI 動作要擋下。',5)}
+  // 第三島石板
+  let onStone=-1;STONES.forEach((st,k)=>{if(Math.hypot(P.x-st.x,P.z-st.z)<2.4)onStone=k});
+  if(onStone>=0&&onStone!==flowLast&&!has('badges','b3')){const step=STONE_ORDER[onStone];
+    if(step<flowK){}else if(step===flowK){flowK++;toast(`第 ${flowK} 步「${FLOW[step].name}」：${FLOW[step].why}`,4);if(flowK===6&&add('badges','b3')){celebrate(100,H(100,100)+8,100);toast('路線圖連起來了！拿到第三島徽章，西邊的橋亮了。',5)}renderHud()}
+    else{const need=FLOW[flowK].name;flowK=0;toast(`順序不對，石板全部熄滅。提示：第一步是「${FLOW[0].name}」${need!==FLOW[0].name?'，你剛剛應該接「'+need+'」':''}。`,5);renderHud()}}
+  flowLast=onStone;
+  // 局部解提示
+  const inPit=Math.hypot(P.x-84,P.z-4)<7&&!has('badges','b2');
+  P.inPit=inPit?P.inPit+dt:0;
+  if(P.inPit>2.5&&!P.pitHinted){P.pitHinted=true;toast('四周看起來都是上坡……這裡就是最好的嗎？去問問旁邊的審查者。',6)}
+  if(Math.hypot(P.x-DEEP[0],P.z-DEEP[1])<4&&!has('badges','b2')&&!panelOpen)winIsland2();
+  // 找最近的可互動物件
+  near=null;let best=6;
+  for(const t of things){if(t.type==='role'){const a=clock*0.4+t.phase;t.x=t.home[0]+Math.cos(a)*2.4;t.z=t.home[1]+Math.sin(a)*2.4}
+    const d=Math.hypot(t.x-P.x,t.z-P.z);if(d<best&&t.type!=='flag'){best=d;near=t}}
+  if(toastT>0){toastT-=dt;if(toastT<=0)toastEl.hidden=true}
+  if(near&&!panelOpen){promptEl.innerHTML=`<b>${isTouch?'點「查看」':'按 E'}</b>：${esc(near.type==='station'?near.data.title:near.data.name)}`;promptEl.hidden=false}else promptEl.hidden=true;
+}
+function draw(){
+  if(!THREE_OK)return;
+  const pl=objs.player;pl.position.set(P.x,groundY(P.x,P.z)+Math.abs(Math.sin(P.walk))*0.25,P.z);pl.rotation.y=P.heading;
+  for(const t of things){
+    if(t.type==='role'){t.obj.position.set(t.x,H(t.x,t.z),t.z);t.obj.rotation.y=Math.atan2(P.x-t.x,P.z-t.z);t.obj.userData.check.visible=has('talked',t.id);t.obj.userData.check.rotation.y=clock*2}
+    if(t.type==='station'){t.obj.userData.gem.rotation.y=clock;t.obj.userData.gem.position.y=4.3+Math.sin(clock*2+t.x)*0.25;t.obj.userData.gem.material.emissiveIntensity=has('visited',t.id)?0.15:0.6}
+    if(t.type==='npc'){t.obj.rotation.y=Math.atan2(P.x-t.x,P.z-t.z)}
+  }
+  objs.bridges.forEach((g,i)=>g.children.forEach(p=>p.material.color.setHex(BRIDGES[i].open()?0xf2c14e:0x6b5a48)));
+  const lit=has('badges','b3')?6:flowK;objs.stones.forEach((m,k)=>{m.userData.top.material.emissiveIntensity=STONE_ORDER[k]<lit?0.55:0});
+  const rp=[];for(let q=0;q<lit;q++){const k=STONE_ORDER.indexOf(q),st=STONES[k];rp.push(new THREE.Vector3(st.x,H(st.x,st.z)+0.8,st.z))}if(rp.length<2)rp.push(new THREE.Vector3(),new THREE.Vector3());objs.route.geometry.setFromPoints(rp);objs.route.visible=lit>=2;
+  const by=H(0,100)+1.9;if(hookAnim){hookAnim.t+=0.016;const k=Math.min(1,hookAnim.t/1.6);if(hookAnim.allow){objs.hookBox.position.set(-16+32*k,by,100)}else{const k1=Math.min(1,k*2);objs.hookBox.position.set(-16+19*k1,by-Math.max(0,k-0.5)*6,100+Math.max(0,k-0.5)*8)}objs.hookBox.material.color.setHex(hookAnim.allow?0x8fd18a:0xe66a5c);if(k>=1)hookAnim=null}else{objs.hookBox.position.set(-16,by,100);objs.hookBox.material.color.setHex(0xefe9d8)}objs.hookBox.visible=!has('badges','b4')||!!hookAnim;
+  objs.beam.visible=has('badges','b4');objs.beam.rotation.y=clock*0.8;objs.lhTop.material.emissive&&objs.lhTop.material.emissive.setHex(has('badges','b4')?0x553311:0x000000);
+  objs.flag.rotation.y=Math.sin(clock)*0.2;objs.sea.material.uniforms.uT.value=clock;
+  for(let k=confetti.length-1;k>=0;k--){const m=confetti[k],v=m.userData.v;v[1]-=18*0.016;m.position.x+=v[0]*0.016;m.position.y+=v[1]*0.016;m.position.z+=v[2]*0.016;m.rotation.x+=0.2;if(m.position.y<-5){scene.remove(m);confetti.splice(k,1)}}
+  // 跟隨鏡頭（固定斜角，方向鍵與畫面一致）
+  const tx=P.x,ty=groundY(P.x,P.z),tz=P.z;camera.position.lerp(new THREE.Vector3(tx,ty+26,tz+30),0.08);camera.lookAt(tx,ty+2,tz);
+  renderer.render(scene,camera);
+}
+function resize(){if(!THREE_OK)return;renderer.setSize(innerWidth,innerHeight,false);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()}
+addEventListener('resize',resize);resize();
+let last=performance.now();
+function loop(now){const dt=Math.min(0.05,(now-last)/1000);last=now;step(dt);draw();requestAnimationFrame(loop)}
+renderHud();
+if(THREE_OK){camera.position.set(P.x,30,P.z+30);requestAnimationFrame(loop)}
+// 測試用：固定 dt 模擬按鍵（不影響一般遊玩）
+window.__game={P,get S(){return S},keys,step,draw,things,H,teleport:(x,z)=>{P.x=x;P.z=z;P.vx=P.vz=0},sim:(k,sec)=>{for(const key of k)keys[key]=true;for(let t=0;t<sec;t+=1/60)step(1/60);for(const key of k)keys[key]=false;draw()},interact,get near(){return near}};
+</script>
+</body>
+</html>

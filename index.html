@@ -24,6 +24,14 @@ body{margin:0;font-family:var(--font-body);line-height:1.6;padding-inline:16px;p
 h1{font-family:var(--font-chalk);font-size:clamp(1.9rem,5vw,2.8rem);margin:0;line-height:1.25;text-wrap:balance}
 h1 em{font-style:normal;color:var(--yellow)}
 .lead{margin:10px 0 0;color:var(--chalk-dim);max-width:62ch}
+.game{margin-top:18px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;text-decoration:none;color:var(--chalk);border:2px solid var(--yellow);border-radius:12px;padding:14px 18px;background:rgba(242,193,78,.08)}
+.game:hover{background:rgba(242,193,78,.16)}
+.game:focus-visible{outline:2px solid var(--yellow);outline-offset:3px}
+.gk{font-size:.8rem;background:var(--yellow);color:var(--board-deep);border-radius:6px;padding:2px 8px;font-weight:700;white-space:nowrap}
+.gt{font-family:var(--font-chalk);font-size:1.35rem;min-width:0}
+.gt small{display:block;font-family:var(--font-body);font-size:.88rem;color:var(--chalk-dim);line-height:1.5}
+.go{color:var(--yellow);font-family:var(--font-chalk);white-space:nowrap}
+@media (max-width:560px){.game{grid-template-columns:1fr}.gk{justify-self:start}}
 .unit{position:relative;display:grid;grid-template-columns:64px 1fr;gap:6px 18px}
 .unit+.unit{margin-top:6px}
 .num{font-family:var(--font-chalk);font-size:2.4rem;line-height:1;color:var(--unit);text-align:center;padding-top:4px}
@@ -62,6 +70,7 @@ footer a{color:var(--chalk)}
   <header class="board">
     <h1>跟 AI 一起工作：<em>給老師的四單元課程</em></h1>
     <p class="lead">從「老師當導演」開始，到為什麼要換一家 AI 審查、本工作區的規則怎麼運作，最後動手改造工具。每個單元先看動畫，再讀講義；動畫都可以逐段停下來解說。</p>
+    <a class="game" href="world/"><span class="gk">遊戲版</span><span class="gt">AI 協作群島<small>操控 3D 老師走過四座島：和 AI 小幫手聊天、翻過山脊跳出局部解、踩亮流程石板、在 Hook 閘門擋下危險動作。</small></span><span class="go">開始探索 ›</span></a>
   </header>
 
   <main class="board" aria-label="課程地圖">
