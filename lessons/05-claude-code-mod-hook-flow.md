@@ -1,5 +1,7 @@
 # 05｜Claude Code Mod：Hook 流程拆解（prompt-optimizer）
 
+> 🧭 **單元四・第 1 步**｜上一步：[04 eduHarness_Nooa](04-eduharness-nooa-cloud-registry-v3.md)｜下一步：[06 延伸專案](06-related-llm-projects.md)｜[課程地圖](../README.md)｜[網站版](https://bai-collab.github.io/llm_teach/)
+
 > **一句話**：mod（plugin）用 function hooks 在 Claude Code 的事件管線上「插一段中介層」——收到事件 `e`，決定要不要改它，再交給 `next(e)` 往下傳。
 >
 > 來源：[bai-collab/claude_code_mod](https://github.com/bai-collab/claude_code_mod)（commit `e1ee8a0`）｜本地快照：[`references/claude_code_mod/`](../references/claude_code_mod/)

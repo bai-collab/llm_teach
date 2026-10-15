@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>跟 AI 一起工作</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* 版面：一塊黑板上由上而下的四個單元，像課程地圖；和各支動畫同一套黑板外觀 */
+:root{
+  --board:#23392f; --board-deep:#1a2b23; --frame:#6e4c31;
+  --chalk:#efe9d8; --chalk-dim:#a9b3a6; --yellow:#f2c14e;
+  --orange:#e8875b; --blue:#7fb6d9; --green:#8fd18a;
+  --font-chalk:"LXGW WenKai TC","Kaiti TC","DFKai-SB","BiauKai",serif;
+  --font-body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--board-deep);color:var(--chalk)}
+body{margin:0;font-family:var(--font-body);line-height:1.6;padding-inline:16px;padding-block:28px 40px}
+.wrap{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.board{background:var(--board);border:14px solid var(--frame);border-radius:6px;box-shadow:inset 0 0 60px rgba(0,0,0,.4);padding:28px clamp(18px,4vw,40px);box-sizing:border-box}
+h1{font-family:var(--font-chalk);font-size:clamp(1.9rem,5vw,2.8rem);margin:0;line-height:1.25;text-wrap:balance}
+h1 em{font-style:normal;color:var(--yellow)}
+.lead{margin:10px 0 0;color:var(--chalk-dim);max-width:62ch}
+.unit{position:relative;display:grid;grid-template-columns:64px 1fr;gap:6px 18px}
+.unit+.unit{margin-top:6px}
+.num{font-family:var(--font-chalk);font-size:2.4rem;line-height:1;color:var(--unit);text-align:center;padding-top:4px}
+.rail{grid-column:1;grid-row:2 / span 3;justify-self:center;width:4px;border-radius:2px;background:linear-gradient(var(--unit),transparent)}
+.unit:last-of-type .rail{background:transparent}
+.head{min-width:0}
+.head h2{font-family:var(--font-chalk);font-size:1.6rem;margin:0;color:var(--chalk)}
+.meta{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:4px}
+.chip{font-size:.82rem;letter-spacing:.04em;border:1.5px solid var(--unit);color:var(--unit);border-radius:999px;padding:1px 10px}
+.goal{grid-column:2;margin:2px 0 0;color:var(--chalk-dim);font-size:.95rem}
+ol.steps{grid-column:2;list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+ol.steps li{min-width:0}
+ol.steps a{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;text-decoration:none;color:var(--chalk);border:1.5px solid rgba(239,233,216,.22);border-radius:10px;padding:10px 14px;background:rgba(239,233,216,.04)}
+ol.steps a:hover{border-color:var(--unit);background:rgba(239,233,216,.08)}
+ol.steps a:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+.kind{font-size:.78rem;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.kind.anim{background:rgba(242,193,78,.16);color:var(--yellow)}
+.kind.note{background:rgba(127,182,217,.16);color:var(--blue)}
+.t{font-family:var(--font-chalk);font-size:1.15rem;min-width:0}
+.t small{display:block;font-family:var(--font-body);font-size:.85rem;color:var(--chalk-dim);line-height:1.4}
+.len{font-size:.82rem;color:var(--chalk-dim);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ask{grid-column:2;margin:8px 0 18px;font-size:.92rem;color:var(--chalk-dim);border-left:3px solid var(--unit);padding-left:10px}
+.routes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.route{border:1.5px solid rgba(239,233,216,.22);border-radius:10px;padding:14px 16px;min-width:0}
+.route h3{font-family:var(--font-chalk);font-size:1.15rem;margin:0 0 4px;color:var(--yellow)}
+.route p{margin:0;font-size:.92rem;color:var(--chalk-dim)}
+h2.sec{font-family:var(--font-chalk);font-size:1.4rem;margin:0 0 12px}
+footer{font-size:.85rem;color:var(--chalk-dim)}
+footer a{color:var(--chalk)}
+@media (max-width:560px){.unit{grid-template-columns:40px 1fr;gap:4px 12px}.num{font-size:1.8rem}ol.steps a{grid-template-columns:1fr auto}.kind{grid-column:1 / -1;justify-self:start}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="board">
+    <h1>跟 AI 一起工作：<em>給老師的四單元課程</em></h1>
+    <p class="lead">從「老師當導演」開始，到為什麼要換一家 AI 審查、本工作區的規則怎麼運作，最後動手改造工具。每個單元先看動畫，再讀講義；動畫都可以逐段停下來解說。</p>
+  </header>
+
+  <main class="board" aria-label="課程地圖">
+    <section class="unit" style="--unit:var(--yellow)">
+      <div class="num" aria-hidden="true">一</div>
+      <div class="head"><h2>認識 AI 協作</h2><div class="meta"><span class="chip">所有老師</span><span class="chip">約 15 分鐘</span></div></div>
+      <div class="rail" aria-hidden="true"></div>
+      <p class="goal">學完能說出：老師在 AI 協作裡扮演導演；AI 可以加快速度、協助發想、分析、批判、整理。</p>
+      <ol class="steps">
+        <li><a href="animations/teacher-as-director/"><span class="kind anim">動畫</span><span class="t">老師當導演<small>AI 五種角色與備課流程</small></span><span class="len">123 秒</span></a></li>
+        <li><a href="animations/teacher-dashboard/"><span class="kind anim">動畫</span><span class="t">教師儀表板導覽<small>看懂全班作答，再請 AI 分析</small></span><span class="len">60 秒</span></a></li>
+        <li><a href="animations/quest-material/"><span class="kind anim">動畫</span><span class="t">闖關教材製作<small>用 Claude Code 做出 2D＋3D 關卡</small></span><span class="len">92 秒</span></a></li>
+      </ol>
+      <p class="ask">課堂提問：你下一個單元，最想請 AI 扮演五種角色中的哪一種？為什麼？</p>
+    </section>
+
+    <section class="unit" style="--unit:var(--orange)">
+      <div class="num" aria-hidden="true">二</div>
+      <div class="head"><h2>為什麼要這樣管 AI</h2><div class="meta"><span class="chip">觀念</span><span class="chip">約 30 分鐘</span></div></div>
+      <div class="rail" aria-hidden="true"></div>
+      <p class="goal">學完能說出：模型外面為什麼需要一層 Harness；為什麼同家族做的要交給不同家族審查。</p>
+      <ol class="steps">
+        <li><a href="https://github.com/bai-collab/llm_teach/blob/main/lessons/01-what-is-a-harness.md"><span class="kind note">講義</span><span class="t">01 什麼是 Harness<small>上下文、工具、護欄、狀態、驗證</small></span><span class="len">講義 01</span></a></li>
+        <li><a href="animations/review-landscape/"><span class="kind anim">動畫</span><span class="t">為什麼要換家審查<small>3D 答案地形：局部解與盲點</small></span><span class="len">100 秒</span></a></li>
+        <li><a href="https://github.com/bai-collab/llm_teach/blob/main/lessons/07-ai-agent-architecture-v4-1.md"><span class="kind note">講義</span><span class="t">07 AI Agent 架構 V4.1<small>Harness → Agent → 核心循環 → Hooks</small></span><span class="len">講義 07</span></a></li>
+      </ol>
+      <p class="ask">課堂提問：你自己檢查自己的作業時，最容易漏掉什麼？換別人看會不同嗎？</p>
+    </section>
+
+    <section class="unit" style="--unit:var(--green)">
+      <div class="num" aria-hidden="true">三</div>
+      <div class="head"><h2>本工作區怎麼做</h2><div class="meta"><span class="chip">實務</span><span class="chip">約 40 分鐘</span></div></div>
+      <div class="rail" aria-hidden="true"></div>
+      <p class="goal">學完能說出：一件任務從分類、路線圖、老師核准、派工到驗證的完整流程，以及 Skill 怎麼讓流程可重複。</p>
+      <ol class="steps">
+        <li><a href="animations/harness-tour/"><span class="kind anim">動畫</span><span class="t">本工作區的 Harness<small>十段規則總覽</small></span><span class="len">110 秒</span></a></li>
+        <li><a href="https://github.com/bai-collab/llm_teach/blob/main/lessons/02-local-harness-adaptive-loop.md"><span class="kind note">講義</span><span class="t">02 本機 Harness<small>Adaptive Loop、Route Plan、分工、驗證預算</small></span><span class="len">講義 02</span></a></li>
+        <li><a href="https://github.com/bai-collab/llm_teach/blob/main/lessons/03-eduharness-skills-workflow.md"><span class="kind note">講義</span><span class="t">03 eduHarness Skill<small>Skill 套件與用途 → 工作流程</small></span><span class="len">講義 03</span></a></li>
+        <li><a href="https://github.com/bai-collab/llm_teach/blob/main/lessons/04-eduharness-nooa-cloud-registry-v3.md"><span class="kind note">講義</span><span class="t">04 eduHarness_Nooa<small>雲端版與 Registry v3</small></span><span class="len">講義 04</span></a></li>
+      </ol>
+      <p class="ask">課堂提問：你的備課流程中，哪一步最需要「老師核准」才能往下走？</p>
+    </section>
+
+    <section class="unit" style="--unit:var(--blue)">
+      <div class="num" aria-hidden="true">四</div>
+      <div class="head"><h2>動手改造工具</h2><div class="meta"><span class="chip">進階・開發者</span><span class="chip">約 40 分鐘</span></div></div>
+      <div class="rail" aria-hidden="true"></div>
+      <p class="goal">學完能說出：Hook 怎麼在事件管線中插入檢查；還有哪些 LLM 專案可以拿來當案例。</p>
+      <ol class="steps">
+        <li><a href="https://github.com/bai-collab/llm_teach/blob/main/lessons/05-claude-code-mod-hook-flow.md"><span class="kind note">講義</span><span class="t">05 Claude Code Mod Hook 流程<small>prompt-optimizer 拆解，附練習</small></span><span class="len">講義 05</span></a></li>
+        <li><a href="https://github.com/bai-collab/llm_teach/blob/main/lessons/06-related-llm-projects.md"><span class="kind note">講義</span><span class="t">06 延伸專案<small>瀏覽器端模型、教師工作台等</small></span><span class="len">講義 06</span></a></li>
+      </ol>
+      <p class="ask">課堂提問：如果要寫一個 hook 擋住你最怕 AI 犯的錯，你會擋什麼？</p>
+    </section>
+  </main>
+
+  <section class="board" aria-labelledby="routes-h">
+    <h2 class="sec" id="routes-h">三種上課路線</h2>
+    <div class="routes">
+      <div class="route"><h3>只有一堂課</h3><p>50 分鐘：單元一的「老師當導演」→ 單元二全部 →「本工作區的 Harness」動畫。</p></div>
+      <div class="route"><h3>教師研習</h3><p>半天：單元一 → 單元二 → 單元三（講義 04 可只講 §3 Human Gate）。</p></div>
+      <div class="route"><h3>開發者工作坊</h3><p>講義 07 §6（Hooks）→ 講義 02 → 單元四全部。</p></div>
+    </div>
+  </section>
+
+  <footer>講義編號沿用建立時的順序，上課順序以本頁地圖為準。原始檔與主題索引見 <a href="https://github.com/bai-collab/llm_teach">GitHub：bai-collab/llm_teach</a>。</footer>
+</div>
+</body>
+</html>

@@ -1,9 +1,84 @@
-# llm_teach｜LLM 教學文章索引
+# llm_teach｜跟 AI 一起工作：給老師的四單元課程
 
-把 bai-collab 各 repo 中與 **LLM / Agent Harness / Claude Code mod** 相關的內容整理成可直接上課的講義。
-**先看下面的「快速查找」，找到要講的主題就點進去。**
+把 bai-collab 各 repo 中與 **LLM／Agent Harness／Claude Code** 相關的內容，整理成一門由淺入深的課。
+**網站版（含動畫）：<https://bai-collab.github.io/llm_teach/>**
 
-## 🔎 快速查找：我要講…
+## 🧭 課程地圖
+
+```text
+[單元一] 認識 AI 協作｜所有老師｜約 15 分鐘
+  動畫：老師當導演 → 教師儀表板 → 闖關教材（2D＋3D）
+  │
+  ▼
+[單元二] 為什麼要這樣管 AI｜觀念｜約 30 分鐘
+  講義 01 什麼是 Harness → 動畫：為什麼要換家審查（3D）→ 講義 07 Agent 架構
+  │
+  ▼
+[單元三] 本工作區怎麼做｜實務｜約 40 分鐘
+  動畫：本工作區的 Harness → 講義 02 本機 Harness → 03 eduHarness Skill → 04 Nooa 雲端版
+  │
+  ▼
+[單元四] 動手改造工具｜進階・開發者｜約 40 分鐘
+  講義 05 Claude Code Mod Hook → 06 延伸專案
+```
+
+講義編號沿用建立時的順序（01～07），上課順序以這張地圖為準；每篇講義開頭都有「上一步／下一步」導覽。
+
+### 單元一　認識 AI 協作（所有老師）
+
+**學完能說出**：老師在 AI 協作裡扮演導演；AI 可以加快速度、協助發想、分析、批判、整理。
+
+| 步驟 | 內容 | 形式 |
+|---|---|---|
+| 1 | [老師當導演](https://bai-collab.github.io/llm_teach/animations/teacher-as-director/)：AI 五種角色與備課流程 | 動畫 123 秒 |
+| 2 | [教師儀表板導覽](https://bai-collab.github.io/llm_teach/animations/teacher-dashboard/)：看懂全班作答，再請 AI 分析 | 動畫 60 秒 |
+| 3 | [闖關教材製作](https://bai-collab.github.io/llm_teach/animations/quest-material/)：用 Claude Code 做出 2D＋3D 關卡 | 動畫 92 秒 |
+
+**課堂提問**：你下一個單元，最想請 AI 扮演五種角色中的哪一種？為什麼？
+
+### 單元二　為什麼要這樣管 AI（觀念）
+
+**學完能說出**：模型外面為什麼需要一層 Harness；為什麼同家族做的要交給不同家族審查。
+
+| 步驟 | 內容 | 形式 |
+|---|---|---|
+| 1 | [01 什麼是 Harness](lessons/01-what-is-a-harness.md)：上下文、工具、護欄、狀態、驗證 | 講義 |
+| 2 | [為什麼要換家審查](https://bai-collab.github.io/llm_teach/animations/review-landscape/)：答案地形、局部解、盲點 | 動畫 100 秒（3D） |
+| 3 | [07 AI Agent 架構 V4.1](lessons/07-ai-agent-architecture-v4-1.md)：Harness → Agent → 核心循環 → Hooks | 講義（附互動圖） |
+
+**課堂提問**：你自己檢查自己的作業時，最容易漏掉什麼？換別人看會不同嗎？
+
+### 單元三　本工作區怎麼做（實務）
+
+**學完能說出**：一件任務從分類、路線圖、老師核准、派工到驗證的完整流程，以及 Skill 怎麼讓流程可重複。
+
+| 步驟 | 內容 | 形式 |
+|---|---|---|
+| 1 | [本工作區的 Harness](https://bai-collab.github.io/llm_teach/animations/harness-tour/)：十段規則總覽 | 動畫 110 秒 |
+| 2 | [02 本機 Harness](lessons/02-local-harness-adaptive-loop.md)：Adaptive Loop、Route Plan、分工、驗證預算 | 講義 |
+| 3 | [03 eduHarness Skill](lessons/03-eduharness-skills-workflow.md)：Skill 套件與用途 → 工作流程 | 講義 |
+| 4 | [04 eduHarness_Nooa](lessons/04-eduharness-nooa-cloud-registry-v3.md)：雲端版與 Registry v3 | 講義 |
+
+**課堂提問**：你的備課流程中，哪一步最需要「老師核准」才能往下走？
+
+### 單元四　動手改造工具（進階・開發者）
+
+**學完能說出**：Hook 怎麼在事件管線中插入檢查；還有哪些 LLM 專案可以拿來當案例。
+
+| 步驟 | 內容 | 形式 |
+|---|---|---|
+| 1 | [05 Claude Code Mod Hook 流程](lessons/05-claude-code-mod-hook-flow.md)：prompt-optimizer 拆解 | 講義（附練習） |
+| 2 | [06 延伸專案](lessons/06-related-llm-projects.md)：瀏覽器端模型、教師工作台等 | 講義 |
+
+**課堂提問**：如果要寫一個 hook 擋住你最怕 AI 犯的錯，你會擋什麼？
+
+### 三種上課路線
+
+- **只有一堂課（50 分鐘）**：單元一的動畫 1 → 單元二全部 → 單元三的動畫 1。
+- **教師研習（半天）**：單元一 → 單元二 → 單元三（講義 04 可只講 §3 Human Gate）。
+- **開發者工作坊**：單元二的講義 07 §6（Hooks）→ 單元三的講義 02 → 單元四全部。
+
+## 🔎 快速查找：我要講…（依主題）
 
 | 我要講… | 看這篇 | 關鍵字 |
 |---|---|---|
@@ -33,31 +108,12 @@
 | **為什麼同家族做的要給不同家族審（局部解）** | [為什麼要換家審查（3D 動畫）](https://bai-collab.github.io/llm_teach/animations/review-landscape/)｜[原始檔](animations/review-landscape/index.html) | 答案地形（比喻）、最佳解與局部解、同家族盲點相近、反例跳出局部解 |
 | **本工作區的 Harness 怎麼運作** | [本工作區的 Harness（2D 動畫）](https://bai-collab.github.io/llm_teach/animations/harness-tour/)｜[原始檔](animations/harness-tour/index.html) | 分類、翻筆記、路線圖、老師核准、派工、review-loop、錯誤紀錄、交接 |
 
-## 📚 建議講課順序
-
-```mermaid
-flowchart LR
-    L1[01 Harness 概念] --> L7[07 Agent 架構 V4.1<br/>三層 · 核心循環 · Hooks]
-    L7 --> L2[02 本機 Harness<br/>Route Plan · 分工 · 驗證]
-    L7 -.Hooks.-> L5
-    L2 --> L3[03 eduHarness<br/>Skill 工作流]
-    L3 --> L4[04 Nooa<br/>Cloud · Registry v3]
-    L1 --> L5[05 Claude Code Mod<br/>Hook 流程]
-    L2 -.使用者權限原則.-> L5
-    L4 --> L6[06 延伸案例]
-    L5 --> L6
-```
-
-- **只有 1 堂課**：01 → 07（§1、§6）→ 02（§2、§5）
-- **講 Agent 基本架構**：07 全篇（可直接投影 `references/ai_agent_architecture/` 的互動 HTML）
-- **想講 Hook 實作**：07 §6 → 05 全篇（附決策流程圖、測試、練習題）
-- **教師研習**：先放 [老師當導演](https://bai-collab.github.io/llm_teach/animations/teacher-as-director/) 動畫（約 2 分鐘，可逐段停下解說）→ 01 → 03 → 04 §3（Human Gate）→ 06 teacher_UI
-
 ## 🗂️ 目錄
 
 ```text
 llm_teach/
-├─ README.md                         # ← 你在這裡：主題索引
+├─ index.html                        # 網站首頁（課程地圖＋動畫入口）
+├─ README.md                         # ← 你在這裡：課程地圖與主題索引
 ├─ animations/                       # 教學動畫（單檔 HTML，GitHub Pages 可直接播放）
 │  ├─ teacher-as-director/index.html # 老師當導演：跟 AI 一起備課（123 秒・10 段，成果牆可點開作品）
 │  ├─ teacher-dashboard/index.html   # 教師儀表板導覽（60 秒・6 段，假資料）

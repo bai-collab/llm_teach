@@ -1,5 +1,7 @@
 # 03｜eduHarness：Skill 套件與「用途 → 工作流程」
 
+> 🧭 **單元三・第 3 步**｜上一步：[02 本機 Harness](02-local-harness-adaptive-loop.md)｜下一步：[04 eduHarness_Nooa](04-eduharness-nooa-cloud-registry-v3.md)｜[課程地圖](../README.md)｜[網站版](https://bai-collab.github.io/llm_teach/)
+
 > **一句話**：eduHarness 在本機 Harness 上加入 **Brain／Knowledge／Templates** 與教育 **Skill packages**，把 Harness 變成教師工作台；Skill **按需載入**，而且**不會偷改 Route Plan**。
 >
 > 來源：

@@ -1,5 +1,7 @@
 # 02｜本機 Harness：治理全景圖、Adaptive Loop 與多執行者分工
 
+> 🧭 **單元三・第 2 步**｜上一步：[動畫：本工作區的 Harness](https://bai-collab.github.io/llm_teach/animations/harness-tour/)｜下一步：[03 eduHarness Skill](03-eduharness-skills-workflow.md)｜[課程地圖](../README.md)｜[網站版](https://bai-collab.github.io/llm_teach/)
+
 > **一句話**：一套只跑在本機的**可插拔治理骨架**——把「治理規則」和「執行環境」拆開；非瑣碎任務先畫 **Route Plan**，經**使用者核准**才動工；主 session Claude 思考裁決、Codex 做粗工、agy 做獨立審查。
 >
 > 來源：

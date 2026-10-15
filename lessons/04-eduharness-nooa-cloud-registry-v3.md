@@ -1,5 +1,7 @@
 # 04｜eduHarness_Nooa：Cloud 版與 Registry v3 雙層治理
 
+> 🧭 **單元三・第 4 步**｜上一步：[03 eduHarness Skill](03-eduharness-skills-workflow.md)｜下一步：[05 Claude Code Mod Hook](05-claude-code-mod-hook-flow.md)（單元四）｜[課程地圖](../README.md)｜[網站版](https://bai-collab.github.io/llm_teach/)
+
 > **一句話**：把 eduHarness 搬上 ChatGPT Web / Gemini Spark——安裝、控制平面、儲存與 canonical distribution 解耦；Registry v3 分成 **Official（GitHub 唯讀快照）＋ Local（安裝者自有 overlay）**。
 >
 > 來源：

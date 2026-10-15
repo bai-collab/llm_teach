@@ -1,5 +1,7 @@
 # 07｜AI Agent 完整架構 V4.1：Harness → Agent → 核心循環 → Hooks
 
+> 🧭 **單元二・第 3 步**｜上一步：[動畫：為什麼要換家審查](https://bai-collab.github.io/llm_teach/animations/review-landscape/)｜下一步：[動畫：本工作區的 Harness](https://bai-collab.github.io/llm_teach/animations/harness-tour/)（單元三）｜[課程地圖](../README.md)｜[網站版](https://bai-collab.github.io/llm_teach/)
+
 > **一句話**：**Harness 管整體運作，Agent 負責解決任務**；Agent 內部跑 Think → Act → Action Input → Observe 的循環，透過 Skill → Tool → MCP 動手；**Hooks 是 Harness 在生命週期特定時間點插進來的檢查點**，不是 Agent 流程的一步。
 >
 > 來源：`ai_agent_architecture_v4_1.html`（使用者提供）｜本地：[`references/ai_agent_architecture/ai_agent_architecture_v4_1.html`](../references/ai_agent_architecture/ai_agent_architecture_v4_1.html)（可直接用瀏覽器開，點各方塊展開說明，適合上課投影）

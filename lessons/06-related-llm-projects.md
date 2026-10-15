@@ -1,5 +1,7 @@
 # 06｜bai-collab 其他 LLM 相關專案（延伸案例）
 
+> 🧭 **單元四・第 2 步（最後一步）**｜上一步：[05 Claude Code Mod Hook](05-claude-code-mod-hook-flow.md)｜下一步：本課程到此結束｜[課程地圖](../README.md)｜[網站版](https://bai-collab.github.io/llm_teach/)
+
 > 依「可以拿來講什麼」分類。每個專案標出**教學切入點**，方便直接挑來當課堂案例。
 > 整理日期：2026-10-11（依各 repo 當時的 README／檔案結構）。
 
