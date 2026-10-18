@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="zh-Hant">
+<script>if(/[?&]embed=1\b/.test(location.search))document.documentElement.classList.add('embed')</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>程式變成神經網路？拆解 Handwired</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* repo 轉教學動畫網頁｜通用骨架（黑板舞台）。新動畫只改「設定區」與「場景區」。 */
+:root{
+  --board:#23392f; --board-deep:#1a2b23; --frame:#6e4c31;
+  --chalk:#efe9d8; --chalk-dim:#a9b3a6;
+  --yellow:#f2c14e; --orange:#e8875b; --blue:#7fb6d9; --green:#8fd18a; --red:#e66a5c;
+  --font-chalk:"LXGW WenKai TC","Kaiti TC","DFKai-SB","BiauKai",serif;
+  --font-body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--board-deep);color:var(--chalk)}
+body{margin:0;font-family:var(--font-body);padding-inline:16px;padding-block:20px 28px}
+.wrap{max-width:1600px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.theater{display:flex;flex-direction:column;gap:12px;align-items:center}
+.theater .caption{align-self:stretch}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px}
+h1{font-family:var(--font-chalk);font-weight:700;font-size:clamp(1.5rem,3.2vw,2.1rem);margin:0}
+.sub{color:var(--chalk-dim);font-size:.95rem;margin:0}
+.board{box-sizing:border-box;border:14px solid var(--frame);border-radius:6px;background:var(--board);box-shadow:inset 0 0 60px rgba(0,0,0,.45);max-width:100%;
+  width:min(100%, calc((100vh - 250px) * 16 / 9 + 28px));width:min(100%, calc((100dvh - 250px) * 16 / 9 + 28px));min-width:min(100%, 360px)}
+/* 全螢幕：預留兩行字幕（字級與行高都以 vh 計），舞台高度＝100vh－上下留白－間距－兩行字幕－木框 */
+.theater:fullscreen{background:var(--board-deep);justify-content:center;gap:1.5vh;padding:2vh 2vw;box-sizing:border-box}
+.theater:fullscreen .board{flex:none;width:min(100%, calc((100vh - 4vh - 1.5vh - 9vh - 28px) * 16 / 9 + 28px))}
+.theater:fullscreen .caption{flex:none;text-align:center;font-size:min(2.4vw,3.2vh);line-height:1.4;min-height:2.8em;max-width:100%}
+@media (max-width:640px){.board{border-width:8px}}
+/* 內嵌（?embed=1）：只留舞台與字幕，尺寸全用 vh，播放由外層 postMessage 控制 */
+html.embed body{padding:0;overflow:hidden}
+html.embed header,html.embed .controls,html.embed .chapters,html.embed .works,html.embed .note{display:none}
+html.embed .wrap{max-width:none;gap:0}
+html.embed .theater{gap:1vh}
+html.embed .board{width:min(100%, calc(89vh * 16 / 9));border-width:1.4vh}
+html.embed .caption{font-size:2.6vh;line-height:1.4;min-height:3.8vh;text-align:center;padding:0 1vh;margin:0}
+.board svg{display:block;width:100%;height:auto;aspect-ratio:16/9}
+.caption{font-family:var(--font-chalk);font-size:clamp(1.05rem,2.2vw,1.45rem);line-height:1.5;min-height:2.3em;margin:0}
+.caption b{color:var(--yellow);font-weight:700}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+button{font:inherit;font-size:.95rem;color:var(--chalk);background:transparent;border:1.5px solid var(--chalk-dim);border-radius:999px;padding:.4em 1em;cursor:pointer}
+button:hover{border-color:var(--yellow);color:var(--yellow)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+#play{min-width:5.5em;border-color:var(--yellow);color:var(--yellow)}
+#scrub{flex:1 1 220px;min-width:0;accent-color:var(--yellow)}
+#time{font-variant-numeric:tabular-nums;color:var(--chalk-dim);font-size:.9rem;min-width:6.5em;text-align:right}
+.chapters{display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:0;list-style:none}
+.chapters button{font-size:.85rem;padding:.25em .8em;border-color:rgba(239,233,216,.25);color:var(--chalk-dim)}
+.chapters button[aria-current="true"]{border-color:var(--yellow);color:var(--yellow)}
+.note{color:var(--chalk-dim);font-size:.85rem;margin:0}
+.works h2{font-family:var(--font-chalk);font-size:1.15rem;margin:0 0 6px;color:var(--yellow)}
+.works ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 16px}
+.works a{color:var(--chalk);text-underline-offset:3px}
+.works span{display:block;color:var(--chalk-dim);font-size:.85rem}
+.t-chalk{font-family:var(--font-chalk);fill:var(--chalk)}
+.t-body{font-family:var(--font-body);fill:var(--chalk)}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1 id="title"></h1>
+    <p class="sub" id="subtitle"></p>
+  </header>
+  <div class="theater" id="theater">
+    <div class="board"><svg id="stage" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img"></svg></div>
+    <p class="caption" id="caption" aria-live="polite"></p>
+  </div>
+  <div class="controls">
+    <button id="prev" type="button">上一段</button>
+    <button id="play" type="button">播放</button>
+    <button id="next" type="button">下一段</button>
+    <input id="scrub" type="range" min="0" max="1" step="0.05" value="0" aria-label="時間軸">
+    <span id="time"></span>
+    <button id="fs" type="button">全螢幕</button>
+  </div>
+  <ul class="chapters" id="chapters"></ul>
+  <section class="works" aria-labelledby="works-h"><h2 id="works-h">延伸閱讀</h2><ul id="works"></ul></section>
+  <p class="note" id="note"></p>
+</div>
+
+<script>
+'use strict';
+// ===================== 設定區（段落與字幕由 timing.json 注入）=====================
+// ===== llm_teach 動畫共用圖形（不得與範本播放器或工具重名）=====
+const C = { yellow: 'var(--yellow)', blue: 'var(--blue)', green: 'var(--green)', red: 'var(--red)', orange: 'var(--orange)', purple: '#b9a3e3', chalk: 'var(--chalk)', dim: 'var(--chalk-dim)', deep: 'var(--board-deep)' };
+function arrow(x1, y1, x2, y2, color = C.dim, op = 1, both = false, k = 1, dash = '') {
+  const ex = lerp(x1, x2, k), ey = lerp(y1, y2, k);
+  const ang = Math.atan2(y2 - y1, x2 - x1), h = 16;
+  const head = (x, y, a) => `<polygon points="${x},${y} ${x - h * Math.cos(a - 0.45)},${y - h * Math.sin(a - 0.45)} ${x - h * Math.cos(a + 0.45)},${y - h * Math.sin(a + 0.45)}" fill="${color}"/>`;
+  let g = `<g opacity="${op}"><line x1="${x1}" y1="${y1}" x2="${ex}" y2="${ey}" stroke="${color}" stroke-width="4" stroke-linecap="round"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
+  if (k >= 0.99) { g += head(x2, y2, ang); if (both) g += head(x1, y1, ang + Math.PI); }
+  return g + '</g>';
+}
+// 曲線箭頭：二次貝茲，k 為繪製進度（以 dasharray 截斷）
+function curve(x1, y1, cx, cy, x2, y2, color = C.dim, op = 1, k = 1, label = '', lx = 0, ly = 0) {
+  const len = 1400;
+  let g = `<g opacity="${op}"><path d="M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="4" stroke-dasharray="10 9" pathLength="${len}" style="stroke-dashoffset:0"/>`;
+  if (k < 0.99) g = `<g opacity="${op}"><path d="M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="4" pathLength="${len}" stroke-dasharray="${(len * k).toFixed(1)} ${len}"/>`;
+  else {
+    const a = Math.atan2(y2 - cy, x2 - cx), h = 16;
+    g += `<polygon points="${x2},${y2} ${x2 - h * Math.cos(a - 0.45)},${y2 - h * Math.sin(a - 0.45)} ${x2 - h * Math.cos(a + 0.45)},${y2 - h * Math.sin(a + 0.45)}" fill="${color}"/>`;
+  }
+  if (label) g += txt(lx, ly, label, { c: 't-body', s: 24, f: color, o: k >= 0.99 ? 1 : 0 });
+  return g + '</g>';
+}
+function hframe(x, y, w, h, op, label = '', color = C.yellow, glow = 0, size = 32) {
+  return `<g opacity="${op}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="26" fill="rgba(242,193,78,${0.04 + 0.08 * glow})" stroke="${color}" stroke-width="${4 + 2 * glow}" stroke-dasharray="16 12"/>` +
+    (label ? txt(x + 26, y + 44, label, { s: size, w: 1, f: color }) : '') + '</g>';
+}
+function card(x, y, W, h, op, lines, color = C.chalk) {
+  // lines: [[文字, 字級, 顏色, 粗體, 字型類別, 置中]]，依序往下排
+  let g = `<g opacity="${op}">${box(x, y, W, h, color, 1, C.deep)}`;
+  let yy = y + 14;
+  for (const [s, size = 28, f = C.chalk, bold = false, c = 't-chalk', cx = false] of lines) {
+    yy += size * 1.25;
+    g += txt(cx ? x + W / 2 : x + 24, yy, s, { s: size, f, w: bold, c, a: cx ? 'middle' : 'start' });
+    yy += size * 0.3;
+  }
+  return g + '</g>';
+}
+function ccard(x, y, w, h, op, title, sub, color = C.chalk, tsize = 32, ssize = 24) {
+  return `<g opacity="${op}">${box(x, y, w, h, color, 1, C.deep)}` +
+    txt(x + w / 2, y + h / 2 + (sub ? -6 : tsize * 0.35), title, { a: 'middle', s: tsize, w: 1, f: color }) +
+    (sub ? txt(x + w / 2, y + h / 2 + ssize + 8, sub, { a: 'middle', c: 't-body', s: ssize, f: C.dim }) : '') + '</g>';
+}
+function chip(x, y, w, label, op, color = C.chalk, size = 26, h = 58) {
+  return `<g opacity="${op}">${box(x, y, w, h, color, 1, C.deep)}${txt(x + w / 2, y + h / 2 + size * 0.36, label, { a: 'middle', s: size, f: color })}</g>`;
+}
+function tick(x, y, s, op, color = C.green) {
+  return `<path d="M${x - s} ${y} L${x - s / 3} ${y + s * 0.7} L${x + s} ${y - s * 0.8}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="${op}"/>`;
+}
+function cross(x, y, s, op, color = C.red) {
+  return `<g opacity="${op}" stroke="${color}" stroke-width="12" stroke-linecap="round"><line x1="${x - s}" y1="${y - s}" x2="${x + s}" y2="${y + s}"/><line x1="${x + s}" y1="${y - s}" x2="${x - s}" y2="${y + s}"/></g>`;
+}
+function dot(x, y, r, color, op = 1) { return `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="${op}"/>`; }
+function underline(x1, x2, y, k, color = C.yellow, op = 1) { return `<line x1="${x1}" y1="${y}" x2="${lerp(x1, x2, k)}" y2="${y}" stroke="${color}" stroke-width="4" opacity="${op}"/>`; }
+// 依進度逐一出現：第 i 個元素在 t0 + i*step 開始、花 dur 秒
+const stagger = (u, t0, i, step = 0.6, dur = 0.7) => ease(P(u, t0 + i * step, t0 + i * step + dur));
+
+// ===== Handwired 教學動畫場景（只由段內時間 u 決定；事實見 brief.md F1–F21、J1–J3）=====
+const META = {
+  title: '程式變成神經網路？拆解 Handwired',
+  subtitle: '10 段・約 2 分鐘・可停在任一段解說',
+  ariaLabel: '教學動畫：說明 Handwired 如何把 if/else 與迴圈改寫成固定形狀的電路、精度與梯度的前提，以及 Learned Gallery 實際訓練什麼。',
+  note: '出處：github.com/chenglou/handwired@257856e（README.md、docs/patterns.md、docs/execution-model.md、src/runtime/prefix-networks.ts、tests/runtime/prefix-networks.test.ts、lab/…/running-totals.test.ts、lab/…/state-machine-prefix-scan.ts、src/learned-gallery/）。標「判讀」者為本次閱讀判斷，非原文。鍵盤：空白鍵播放／暫停，左右方向鍵切換段落，F 鍵全螢幕。畫面只由時間決定。',
+  works: [
+    ['Handwired 專案頁', '線上展示（HandwiredOS、Learned Gallery、JSON Search）', 'https://chenglou.me/handwired/'],
+    ['GitHub：chenglou/handwired', '原始碼與文件', 'https://github.com/chenglou/handwired'],
+  ],
+};
+
+// 等寬程式碼文字
+function code(x, y, s, o = {}) {
+  const size = o.s || 28, fill = o.f || 'var(--chalk)', op = o.o ?? 1, a = o.a || 'start';
+  return `<text x="${x}" y="${y}" font-family="Consolas,'Courier New',monospace" font-size="${size}" text-anchor="${a}" fill="${fill}" opacity="${op}">${esc(s)}</text>`;
+}
+function codeCard(x, y, w, h, op, label, line, color = C.chalk) {
+  return `<g opacity="${op}">${box(x, y, w, h, color, 1, C.deep)}` +
+    txt(x + 22, y + 34, label, { c: 't-body', s: 22, f: C.dim }) + code(x + 22, y + 76, line, { s: 27, f: color }) + '</g>';
+}
+// 判讀標籤
+function judge(x, y, w, label, op) { return chip(x, y, w, label, op, C.orange, 24, 56); }
+// 燈號圓
+function badge(x, y, kind, op) {
+  const col = kind === 'ok' ? C.green : kind === 'warn' ? C.orange : C.blue;
+  const g = kind === 'ok' ? tick(x, y + 2, 14, 1, C.deep) : txt(x, y + 12, kind === 'warn' ? '!' : '?', { a: 'middle', s: 34, w: 1, f: C.deep });
+  return `<g opacity="${op}"><circle cx="${x}" cy="${y}" r="28" fill="${col}"/>${g}</g>`;
+}
+
+// [1] 開場：它宣稱什麼（F1、F2）
+function s1(u) {
+  let g = head(u, '開場', '它宣稱什麼？');
+  g += ccard(160, 300, 420, 160, ease(P(u, 0.8, 1.6)), 'JavaScript 程式', 'if-else・迴圈・狀態', C.chalk);
+  g += arrow(610, 380, 980, 380, C.yellow, ease(P(u, 1.6, 2.4)), false, ease(P(u, 1.6, 2.6)));
+  g += txt(795, 350, '直接轉換', { a: 'middle', c: 't-body', s: 24, f: C.dim, o: ease(P(u, 2.2, 2.8)) });
+  g += ccard(1010, 300, 430, 160, ease(P(u, 2.4, 3.2)), '神經網路', '矩陣乘法＋ReGLU', C.blue);
+  const claims = ['不必訓練', '精確', '可微分'];
+  claims.forEach((c, i) => { g += chip(300 + i * 360, 560, 280, c, stagger(u, 4, i, 0.8), C.yellow, 30, 66); });
+  g += txt(800, 730, '這三個宣稱，各有什麼前提？', { a: 'middle', s: 40, w: 1, f: C.yellow, o: ease(P(u, 7.5, 8.5)) });
+  g += txt(800, 790, '以下逐一對照原始碼與測試', { a: 'middle', c: 't-body', s: 26, f: C.dim, o: ease(P(u, 8.5, 9.3)) });
+  return g;
+}
+
+// [2] if／else：兩邊都算（F3、F4）
+function s2(u) {
+  let g = head(u, 'if／else', '兩個分支都算，再選一邊');
+  g += codeCard(80, 210, 680, 110, ease(P(u, 0.6, 1.3)), '原本的程式', 'result = (a > 4) ? 10 : 12');
+  g += codeCard(80, 350, 680, 110, ease(P(u, 1.8, 2.5)), '判斷式改成 ReLU（只會是 0 或 1）', 'above4 = max(0,a−4) − max(0,a−5)', C.yellow);
+  g += codeCard(80, 490, 680, 110, ease(P(u, 3, 3.7)), '兩邊都算，用 above4 選一邊', 'result = above4·10 + (1−above4)·12', C.blue);
+  g += chip(80, 650, 380, '前提：a 為整數', ease(P(u, 9.5, 10.3)), C.orange, 28, 64);
+  // 右側：兩條路
+  const pick = u < 9 ? 12 : 10, phase = ease(P(u, 6.5, 7.2));
+  const aLab = u < 9 ? 'a = 3' : 'a = 5';
+  const on10 = phase * (pick === 10 ? 1 : 0), on12 = phase * (pick === 12 ? 1 : 0);
+  g += chip(880, 450, 180, aLab, ease(P(u, 4.5, 5.2)), C.chalk, 30, 64);
+  g += arrow(1070, 470, 1290, 360, pick === 10 && phase > 0.5 ? C.yellow : C.dim, ease(P(u, 5, 5.8)));
+  g += arrow(1070, 500, 1290, 610, pick === 12 && phase > 0.5 ? C.yellow : C.dim, ease(P(u, 5, 5.8)));
+  g += ccard(1300, 300, 200, 110, ease(P(u, 5.4, 6)), '10', '分支一', on10 > 0.5 ? C.yellow : C.chalk, 44);
+  g += ccard(1300, 560, 200, 110, ease(P(u, 5.4, 6)), '12', '分支二', on12 > 0.5 ? C.yellow : C.chalk, 44);
+  g += txt(880, 760, `above4 = ${pick === 10 ? 1 : 0} → 結果 ${pick}`, { s: 30, w: 1, f: C.yellow, o: phase });
+  return g;
+}
+
+// [3] 迴圈：層數是固定的（F5、F6）
+function s3(u) {
+  let g = head(u, '迴圈', '編譯後是固定層數的計算圖');
+  for (let i = 0; i < 5; i++) {
+    const o = stagger(u, 0.8, i, 0.35);
+    g += `<g opacity="${o}">${box(120, 230 + i * 80, 420, 60, C.blue, 1, C.deep)}</g>`;
+    g += txt(330, 270 + i * 80, `第 ${i + 1} 層`, { a: 'middle', c: 't-body', s: 24, f: C.blue, o });
+  }
+  g += txt(120, 670, '每一層只執行一次', { s: 32, w: 1, o: ease(P(u, 3, 3.7)) });
+  g += txt(120, 720, '→ 不能跑「執行時才決定次數」的迴圈', { c: 't-body', s: 26, f: C.yellow, o: ease(P(u, 3.8, 4.5)) });
+  // 右側：1,024 列累加比較
+  g += txt(660, 260, '1,024 列累加（每列的 top）', { s: 30, w: 1, o: ease(P(u, 5.5, 6.2)) });
+  const k1 = ease(P(u, 6.5, 8.5)), k2 = ease(P(u, 8.8, 9.6));
+  g += txt(660, 340, '逐列串接：1,023 個運算', { c: 't-body', s: 26, f: C.dim, o: ease(P(u, 6.3, 6.9)) });
+  g += `<rect x="660" y="360" width="${(820 * k1).toFixed(1)}" height="56" rx="8" fill="${C.red}" opacity="0.85"/>`;
+  g += txt(670, 400, `${Math.round(1023 * k1).toLocaleString("en-US")} 層`, { s: 28, w: 1, f: C.deep, o: k1 > 0.15 ? 1 : 0 });
+  g += txt(660, 510, '前綴網路（Brent-Kung）：2,036 個運算', { c: 't-body', s: 26, f: C.dim, o: ease(P(u, 8.6, 9.2)) });
+  g += `<rect x="660" y="530" width="${(16 * k2).toFixed(1)}" height="56" rx="4" fill="${C.green}"/>`;
+  g += txt(700, 570, '18 層', { s: 28, w: 1, f: C.green, o: k2 });
+  g += txt(660, 700, '用更多運算，換更少層數', { s: 34, w: 1, f: C.yellow, o: ease(P(u, 10.5, 11.3)) });
+  return g;
+}
+
+// [4] 迴圈：兩兩合併（F7、F8）— Brent-Kung，依深度分層
+const BK_LAYERS = [
+  [[0, 1], [2, 3], [4, 5], [6, 7]],
+  [[1, 3], [5, 7], [1, 2]],
+  [[3, 7], [3, 5], [3, 4]],
+  [[5, 6]],
+];
+function s4(u) {
+  let g = head(u, '迴圈', '前綴網路：兩兩合併');
+  const X = (i) => 95 + i * 180, Y = 330, W = 150, H = 90;
+  // 每格目前覆蓋範圍 [lo, hi]
+  const lo = [0, 1, 2, 3, 4, 5, 6, 7], hi = [0, 1, 2, 3, 4, 5, 6, 7];
+  let combines = 0, layer = 0;
+  const changed = new Set();
+  const lt = (k) => 1.4 + k * 2.1; // 第 k 層開始時間
+  BK_LAYERS.forEach((L, k) => {
+    if (u >= lt(k) + 1.2) { L.forEach(([e, l]) => { lo[l] = lo[e]; combines++; }); layer = k + 1; if (k === BK_LAYERS.length - 1 || u < lt(k + 1) + 1.2) L.forEach(([, l]) => changed.add(l)); }
+  });
+  // 範圍標記
+  for (let i = 0; i < 8; i++) {
+    const o = stagger(u, 0.4, i, 0.08, 0.5), col = changed.has(i) ? C.yellow : (lo[i] === 0 ? C.green : C.chalk);
+    g += `<g opacity="${o}">${box(X(i), Y, W, H, col, 1, C.deep)}</g>`;
+    g += txt(X(i) + W / 2, Y + 58, lo[i] === hi[i] ? String(i) : `${lo[i]}..${hi[i]}`, { a: 'middle', s: 34, w: 1, f: col, o });
+  }
+  // 當前層的合併弧線
+  BK_LAYERS.forEach((L, k) => {
+    const o = P(u, lt(k), lt(k) + 0.3) * (1 - P(u, lt(k) + 1.7, lt(k) + 2));
+    if (o <= 0) return;
+    L.forEach(([e, l], j) => {
+      const x1 = X(e) + W / 2, x2 = X(l) + W / 2, cy = Y - 50 - Math.min(90, (l - e) * 30) - (j % 2) * 10;
+      g += curve(x1, Y - 6, (x1 + x2) / 2, cy, x2, Y - 6, C.yellow, o, ease(P(u, lt(k), lt(k) + 1)));
+    });
+  });
+  g += txt(95, 520, `合併 ${combines} 次・第 ${layer} 層`, { s: 34, w: 1, f: C.yellow, o: ease(P(u, 1.2, 1.8)) });
+  g += txt(95, 570, '綠色＝已完成「從 0 開始」的前綴', { c: 't-body', s: 24, f: C.green, o: ease(P(u, 3, 3.6)) });
+  g += chip(95, 630, 560, '逐列串接：7 個運算・7 層', ease(P(u, 10.2, 10.8)), C.red, 28, 64);
+  g += chip(700, 630, 640, '前綴網路：11 個運算・4 層', ease(P(u, 10.6, 11.2)), C.green, 28, 64);
+  g += txt(95, 770, '條件：combine 要滿足結合律，不必滿足交換律（順序不能顛倒）', { s: 30, w: 1, f: C.chalk, o: ease(P(u, 11.6, 12.3)) });
+  return g;
+}
+
+// [5] 驗證：測試怎麼抓錯（F9）
+function s5(u) {
+  let g = head(u, '驗證', '測試怎麼抓出接錯的線');
+  g += hframe(80, 210, 690, 600, ease(P(u, 0.6, 1.2)), '測試 1：字串串接當 combine', C.yellow, 0, 28);
+  const rows = ['0,', '0,1,', '0,1,2,', '0,1,2,3,'];
+  rows.forEach((r, i) => {
+    const o = stagger(u, 1.6, i, 0.6);
+    g += code(130, 320 + i * 64, r, { s: 32, o });
+    g += tick(560, 310 + i * 64, 16, o);
+  });
+  g += code(130, 600, '1,0,', { s: 32, f: C.red, o: ease(P(u, 4.6, 5.2)) });
+  g += cross(560, 590, 16, ease(P(u, 4.6, 5.2)));
+  g += txt(130, 660, '順序反了 → 文字立刻不同', { c: 't-body', s: 26, f: C.red, o: ease(P(u, 5.2, 5.8)) });
+  g += txt(130, 760, '1～70 項全部檢查', { s: 30, w: 1, f: C.yellow, o: ease(P(u, 6, 6.6)) });
+  g += hframe(830, 210, 690, 600, ease(P(u, 7, 7.6)), '測試 3：真的跑狀態機', C.blue, 0, 28);
+  g += txt(1010, 320, '電路輸出', { a: 'middle', c: 't-body', s: 26, f: C.dim, o: ease(P(u, 7.8, 8.3)) });
+  g += txt(1340, 320, '普通迴圈', { a: 'middle', c: 't-body', s: 26, f: C.dim, o: ease(P(u, 7.8, 8.3)) });
+  for (let i = 0; i < 4; i++) {
+    const o = stagger(u, 8.3, i, 0.5);
+    const lab = i < 3 ? `第 ${i + 1} 個事件後` : '…';
+    g += txt(1010, 390 + i * 70, lab, { a: 'middle', s: 26, o });
+    g += txt(1175, 390 + i * 70, '＝', { a: 'middle', s: 30, w: 1, f: C.green, o });
+    g += txt(1340, 390 + i * 70, lab, { a: 'middle', s: 26, o });
+  }
+  g += txt(1175, 720, '每個事件後的狀態都要逐值相等', { a: 'middle', s: 28, w: 1, f: C.blue, o: ease(P(u, 10.5, 11.1)) });
+  return g;
+}
+
+// [6] 精度：分組改變答案（F10、F11、F12）
+function s6(u) {
+  let g = head(u, '精度', 'FP32：分組不同，答案不同');
+  g += code(80, 240, '高度 = [2²⁴, 1, 1, 1]', { s: 30, f: C.yellow, o: ease(P(u, 0.6, 1.2)) });
+  // 迴圈
+  g += txt(80, 320, '迴圈', { s: 30, w: 1, f: C.red, o: ease(P(u, 1.2, 1.8)) });
+  for (let i = 0; i < 3; i++) {
+    const o = stagger(u, 1.8, i, 0.7);
+    g += chip(260 + i * 330, 280, 290, '2²⁴ + 1 → 2²⁴', o, C.chalk, 26, 60);
+    g += cross(260 + i * 330 + 270, 280, 12, o * ease(P(u, 4.2, 4.6)), C.red);
+  }
+  g += txt(1280, 320, '結果 2²⁴', { s: 28, w: 1, f: C.red, o: ease(P(u, 4.4, 5)) });
+  // Brent-Kung
+  g += txt(80, 430, '前綴網路', { s: 30, w: 1, f: C.green, o: ease(P(u, 5, 5.6)) });
+  g += chip(260, 390, 290, '1 + 1 = 2', ease(P(u, 5.6, 6.2)), C.chalk, 26, 60);
+  g += arrow(560, 420, 640, 420, C.dim, ease(P(u, 6.2, 6.6)));
+  g += chip(650, 390, 380, '2²⁴ + 2', ease(P(u, 6.4, 7)), C.green, 26, 60);
+  g += txt(1280, 430, '結果 2²⁴+2', { s: 28, w: 1, f: C.green, o: ease(P(u, 7, 7.6)) });
+  g += txt(80, 520, '另一例 229＋167.4＋208.5＋194.4：迴圈 799.300048828125，前綴網路 799.2999877929688', { c: 't-body', s: 24, f: C.dim, o: ease(P(u, 7.6, 8.2)) });
+  // 誤差長條
+  g += txt(80, 610, '10,000 列，與 float64 精確和比較的最大誤差', { s: 30, w: 1, o: ease(P(u, 8.6, 9.2)) });
+  const k = ease(P(u, 9.2, 11));
+  g += txt(80, 680, '迴圈', { c: 't-body', s: 26, f: C.dim, o: ease(P(u, 9, 9.4)) });
+  g += `<rect x="300" y="650" width="${(1000 * k).toFixed(1)}" height="44" rx="6" fill="${C.red}" opacity="0.85"/>`;
+  g += txt(310 + 1000 * k, 683, '5.67 px', { s: 28, w: 1, f: C.red, o: k > 0.95 ? 1 : 0 });
+  g += txt(80, 760, '前綴網路', { c: 't-body', s: 26, f: C.dim, o: ease(P(u, 9, 9.4)) });
+  g += `<rect x="300" y="730" width="${(46 * k).toFixed(1)}" height="44" rx="6" fill="${C.green}"/>`;
+  g += txt(360, 763, '0.26 px', { s: 28, w: 1, f: C.green, o: k > 0.95 ? 1 : 0 });
+  return g;
+}
+
+// [7] 狀態機：合併＝查表（F13、F14、F15，J3）
+function s7(u) {
+  let g = head(u, '狀態機', '兩個事件合併＝查兩次表');
+  const S = ['idle', 'armed', 'pressedOutside'];
+  const R1 = [1, 1, 2], R2 = [0, 2, 2];
+  const cx = (s) => 420 + s * 370, cw = 330;
+  const o0 = ease(P(u, 0.6, 1.2));
+  S.forEach((s, i) => { g += txt(cx(i) + cw / 2, 240, '從 ' + s, { a: 'middle', c: 't-body', s: 24, f: C.dim, o: o0 }); });
+  const rows = [['downOnButton', R1, 270], ['moveOutside', R2, 350]];
+  rows.forEach(([name, R, y], r) => {
+    const o = ease(P(u, 1 + r * 0.6, 1.6 + r * 0.6));
+    g += code(80, y + 40, name, { s: 26, o });
+    R.forEach((v, i) => { g += `<g opacity="${o}">${box(cx(i), y, cw, 60, C.chalk, 1, C.deep)}</g>` + txt(cx(i) + cw / 2, y + 40, S[v], { a: 'middle', s: 26, o }); });
+  });
+  // 逐一走 later[earlier[s]]
+  const st = (s) => 3 + s * 2;
+  for (let s = 0; s < 3; s++) {
+    const a1 = P(u, st(s), st(s) + 0.5) * (1 - P(u, st(s) + 1.8, st(s) + 2));
+    if (a1 > 0) {
+      g += `<rect x="${cx(s) - 4}" y="266" width="${cw + 8}" height="68" rx="20" fill="none" stroke="${C.yellow}" stroke-width="5" opacity="${a1}"/>`;
+      const a2 = a1 * P(u, st(s) + 0.6, st(s) + 1);
+      g += `<rect x="${cx(R1[s]) - 4}" y="346" width="${cw + 8}" height="68" rx="20" fill="none" stroke="${C.yellow}" stroke-width="5" opacity="${a2}"/>`;
+    }
+    const o = ease(P(u, st(s) + 1.1, st(s) + 1.6));
+    g += `<g opacity="${o}">${box(cx(s), 450, cw, 60, C.yellow, 1, C.deep)}</g>` + txt(cx(s) + cw / 2, 490, S[R2[R1[s]]], { a: 'middle', s: 26, w: 1, f: C.yellow, o });
+  }
+  g += code(80, 490, 'later[earlier[s]]', { s: 26, f: C.yellow, o: ease(P(u, 3, 3.6)) });
+  g += card(80, 560, 690, 120, ease(P(u, 9.2, 9.8)), [['查表：取整數後複製值', 28, C.green, true], ['只複製整數 → 結果精確', 24, C.dim, false, 't-body']]);
+  g += card(830, 560, 690, 120, ease(P(u, 10.2, 10.8)), [['整數之間導數為 0', 28, C.red, true], ['索引沒有梯度', 24, C.dim, false, 't-body']]);
+  g += chip(80, 720, 690, '換一張表：按鈕 ↔ 切換開關，同一份程式', ease(P(u, 11, 11.6)), C.blue, 24, 60);
+  g += judge(830, 722, 520, '判讀：狀態轉移學不來', ease(P(u, 11.8, 12.4)));
+  return g;
+}
+
+// [8] 類比：像對數表（F22、F23、F24；左半為比喻，非原文）
+function s8(u) {
+  let g = head(u, '類比', '像對數表：先算好，再查表');
+  // 左：對數表（比喻）
+  g += hframe(80, 210, 690, 440, ease(P(u, 0.5, 1.1)), '對數表（類比，非原文）', C.chalk, 0, 26);
+  const rows = [['x', 'log x'], ['2.34', '0.3692'], ['2.35', '0.3711']];
+  rows.forEach(([a, b], i) => {
+    const o = stagger(u, 1.1, i, 0.35), y = 320 + i * 56;
+    g += code(160, y, a, { s: 28, f: i ? C.chalk : C.dim, o }) + code(400, y, b, { s: 28, f: i ? C.chalk : C.dim, o });
+  });
+  g += txt(120, 520, '查 2.345 → 落在兩格之間', { s: 28, o: ease(P(u, 2.6, 3.2)) });
+  g += txt(120, 580, '→ 內插 ≈ 0.3701（連續變化）', { s: 28, w: 1, f: C.green, o: ease(P(u, 3.4, 4)) });
+  // 右：Handwired 查表（原文）
+  g += hframe(830, 210, 690, 440, ease(P(u, 4.4, 5)), 'Handwired 查表（原文）', C.blue, 0, 26);
+  g += txt(870, 320, '資料改變時，JS 先算好每種輸入', { c: 't-body', s: 26, o: ease(P(u, 5, 5.6)) });
+  g += txt(870, 365, '的結果，寫進 cell', { c: 't-body', s: 26, o: ease(P(u, 5, 5.6)) });
+  g += txt(870, 425, '電路查一次＝1 個運算，不論表多大', { c: 't-body', s: 26, o: ease(P(u, 5.8, 6.4)) });
+  g += txt(870, 520, '查 2.345 → 取整數 → 第 2 格', { s: 28, o: ease(P(u, 6.6, 7.2)) });
+  g += txt(870, 580, '→ 階梯函數，索引沒有梯度', { s: 28, w: 1, f: C.red, o: ease(P(u, 7.4, 8)) });
+  // 下：共同點與差異
+  g += chip(80, 690, 690, '共同點：先算好、查一次', ease(P(u, 8.4, 9)), C.green, 28, 64);
+  g += chip(830, 690, 690, '差異：能不能在兩格之間內插', ease(P(u, 9, 9.6)), C.orange, 28, 64);
+  g += txt(80, 805, '代價：表可能很大，例如斷行規則 41×41×41 ＝ 68,921 格', { c: 't-body', s: 24, f: C.dim, o: ease(P(u, 9.8, 10.4)) });
+  return g;
+}
+
+// [9] 訓練：Learned Gallery（F16、F17、F18，J1）
+function s9(u) {
+  let g = head(u, '訓練', 'Learned Gallery 實際訓練什麼');
+  const cols = [150, 340, 530, 700], o1 = ease(P(u, 0.6, 1.4));
+  const ny = (i) => 270 + i * 58;
+  // 連線
+  const lo = ease(P(u, 1.6, 2.4)) * 0.35;
+  for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) g += `<line x1="${cols[1]}" y1="${ny(i)}" x2="${cols[2]}" y2="${ny(j)}" stroke="${C.dim}" stroke-width="1.5" opacity="${lo}"/>`;
+  for (let i = 0; i < 6; i++) {
+    g += `<line x1="${cols[0] + 60}" y1="415" x2="${cols[1]}" y2="${ny(i)}" stroke="${C.dim}" stroke-width="1.5" opacity="${lo}"/>`;
+    g += `<line x1="${cols[2]}" y1="${ny(i)}" x2="${cols[3] - 50}" y2="415" stroke="${C.dim}" stroke-width="1.5" opacity="${lo}"/>`;
+  }
+  g += `<g opacity="${o1}">${box(cols[0] - 70, 370, 130, 90, C.chalk, 1, C.deep)}</g>` + txt(cols[0] - 5, 425, '槽位特徵', { a: 'middle', c: 't-body', s: 22, o: o1 });
+  for (let i = 0; i < 6; i++) { g += dot(cols[1], ny(i), 18, C.blue, o1) + dot(cols[2], ny(i), 18, C.blue, o1); }
+  g += txt(cols[1], 640, 'ReGLU 6', { a: 'middle', c: 't-body', s: 22, f: C.blue, o: o1 });
+  g += txt(cols[2], 640, 'ReGLU 6', { a: 'middle', c: 't-body', s: 22, f: C.blue, o: o1 });
+  g += `<g opacity="${o1}">${box(cols[3] - 50, 370, 120, 90, C.chalk, 1, C.deep)}</g>` + txt(cols[3] + 10, 410, '矩形', { a: 'middle', c: 't-body', s: 22, o: o1 }) + txt(cols[3] + 10, 440, '位置大小', { a: 'middle', c: 't-body', s: 22, o: o1 });
+  g += txt(80, 710, '244 個參數・6,320 個運算・8 層', { s: 30, w: 1, o: ease(P(u, 2.6, 3.2)) });
+  g += txt(80, 770, '起點：固定種子的亂數權重', { s: 30, w: 1, f: C.yellow, o: ease(P(u, 3.6, 4.2)) });
+  // 右：一個訓練步驟
+  g += hframe(860, 210, 660, 520, ease(P(u, 5, 5.6)), '一個訓練步驟', C.chalk, 0, 28);
+  const steps = [['Handwired 電路：前向計算＋反向傳播', C.blue], ['JS：最小成本配對（輸出↔草稿）', C.orange], ['JS：損失與梯度', C.orange], ['JS：Adam 更新權重', C.orange], ['JS：trainOrUndo 撤回變差的幀', C.orange]];
+  steps.forEach(([s, col], i) => { g += chip(900, 290 + i * 84, 580, s, stagger(u, 6, i, 0.6), col, 24, 64); });
+  g += judge(860, 760, 660, '判讀：訓練亂數起步的小網路，非解凍手寫程式', ease(P(u, 10.5, 11.2)));
+  return g;
+}
+
+// [10] 結論：宣稱對照（F19、F20、F21，J2）
+function s10(u) {
+  let g = head(u, '結論', '宣稱對照原始碼');
+  const rows = [
+    ['ok', '平行化：GPU 上同時搜尋 10 萬份 JSON，毫秒級'],
+    ['ok', '精確：有條件（整數輸入、FP32 分組與數值範圍）'],
+    ['warn', '可微分：查表的索引沒有梯度'],
+    ['ask', '解凍再訓練、端到端結合：README 列為用途，本次未見實作'],
+    ['warn', 'CPU 上：時間跟著運算數走，常不如原本的迴圈'],
+  ];
+  rows.forEach(([k, s], i) => {
+    const o = stagger(u, 0.8, i, 1.2), y = 210 + i * 104;
+    g += `<g opacity="${o}">${box(80, y, 1440, 84, k === 'ok' ? C.green : k === 'warn' ? C.orange : C.blue, 1, C.deep)}</g>`;
+    g += badge(140, y + 42, k, o);
+    g += txt(200, y + 53, s, { s: 30, w: k === 'ask' ? 1 : 0, o });
+  });
+  g += txt(800, 800, '判讀：一本把迴圈改寫成平行電路的手冊，不是取代訓練的新方法', { a: 'middle', s: 30, w: 1, f: C.yellow, o: ease(P(u, 8, 8.8)) });
+  return g;
+}
+
+const SEGS = [
+  { len: 12, grp: "開場", name: "它宣稱什麼", scene: s1,
+    cap: "Handwired 宣稱：把一般 JavaScript 變成神經網路，<b>不必訓練、精確、可微分</b>。真的嗎？" },
+  { len: 14, grp: "if／else", name: "兩邊都算", scene: s2,
+    cap: "判斷式改成 ReLU 算出 0 或 1，<b>兩個分支都算</b>，再用它選一邊——但前提是 <b>a 為整數</b>。" },
+  { len: 14, grp: "迴圈", name: "層數是固定的", scene: s3,
+    cap: "每一層只跑一次，<b>不能跑不定次數的迴圈</b>；1,024 列累加：串接要 1,023 層，前綴網路只要 18 層。" },
+  { len: 14, grp: "迴圈", name: "兩兩合併", scene: s4,
+    cap: "前綴網路兩兩合併：8 列從 7 層降到 4 層。條件只有一個：<b>combine 要滿足結合律</b>，順序不能顛倒。" },
+  { len: 13, grp: "驗證", name: "測試怎麼抓錯", scene: s5,
+    cap: "測試用<b>字串串接</b>當 combine：接錯或順序反了，文字立刻不同；狀態機則和迴圈<b>逐值比對</b>。" },
+  { len: 14, grp: "精度", name: "分組改變答案", scene: s6,
+    cap: "FP32 下<b>分組改變答案</b>；但 10,000 列時，前綴網路誤差 0.26 px，比迴圈的 5.67 px 小。" },
+  { len: 14, grp: "狀態機", name: "合併＝查表", scene: s7,
+    cap: "兩個事件合併成 <b>later[earlier[s]]</b>，本質是查表：精確，但<b>索引沒有梯度</b>（判讀：狀態轉移學不來）。" },
+  { len: 12, grp: "類比", name: "像對數表", scene: s8,
+    cap: "像對數表：<b>先算好、查一次</b>；但對數表可在兩格間內插，indexRead 只取整數，所以<b>沒有梯度</b>（類比）。" },
+  { len: 14, grp: "訓練", name: "Learned Gallery", scene: s9,
+    cap: "Learned Gallery 訓練<b>亂數起步的 244 參數小網路</b>，Adam 在 JS（判讀：非解凍手寫程式）。" },
+  { len: 13, grp: "結論", name: "宣稱對照", scene: s10,
+    cap: "<b>平行化與精確：成立（有條件）</b>；端到端結合是 README 列的用途，本次未見實作；CPU 上常不如迴圈。" },
+];
+
+// ===================== 工具（通常不用改）=====================
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const P = (u, a, b) => clamp((u - a) / (b - a), 0, 1);           // u 在 [a,b] 的進度 0–1
+const ease = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const lerp = (a, b, k) => a + (b - a) * k;
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); } // 固定種子亂數
+function txt(x, y, s, o = {}) {
+  const a = o.a || 'start', size = o.s || 32, fill = o.f || 'var(--chalk)', op = o.o ?? 1, w = o.w ? 700 : 400, cls = o.c || 't-chalk';
+  return `<text x="${x}" y="${y}" class="${cls}" font-size="${size}" font-weight="${w}" text-anchor="${a}" fill="${fill}" opacity="${op}">${esc(s)}</text>`;
+}
+function box(x, y, w, h, stroke = 'var(--chalk)', op = 1, fill = 'none') {
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="${fill}" stroke="${stroke}" stroke-width="3" opacity="${op}"/>`;
+}
+function head(u, kicker, title) {
+  const o = ease(P(u, 0, 0.8));
+  return txt(80, 90, kicker, { c: 't-body', s: 24, f: 'var(--chalk-dim)', o }) + txt(80, 150, title, { s: 50, w: 1, o });
+}
+
+let acc = 0; SEGS.forEach((s) => { s.a = acc; acc += s.len; s.b = acc; });
+window.DURATION = acc;
+window.SEGS = SEGS.map(({ len, grp, name, cap, a, b }) => ({ len, grp, name, cap, a, b }));
+const stage = document.getElementById('stage'), capEl = document.getElementById('caption');
+const segIndex = (t) => { for (let i = 0; i < SEGS.length; i++) if (t < SEGS[i].b) return i; return SEGS.length - 1; };
+window.seek = async function (t) {
+  t = clamp(Number(t) || 0, 0, window.DURATION);
+  const i = segIndex(t), s = SEGS[i];
+  const u = t - s.a;
+  // 段落切換時淡入淡出（只由 t 決定）
+  const fade = Math.min(P(u, 0, 0.35), i === SEGS.length - 1 ? 1 : 1 - P(u, s.len - 0.35, s.len));
+  stage.innerHTML = `<g opacity="${fade.toFixed(3)}">${s.scene(u)}</g>` +
+    txt(1520, 870, `${i + 1} / ${SEGS.length}・${s.grp}・${s.name}`, { a: 'end', c: 't-body', s: 18, f: 'var(--chalk-dim)' });
+  capEl.innerHTML = s.cap; // 字幕只來自本檔 SEGS（作者撰寫、只含 <b>）
+  return true;
+};
+window.ready = Promise.all([document.fonts ? document.fonts.ready.catch(() => null) : null]);
+
+// ===================== 播放器外殼（只呼叫 seek）=====================
+document.title = META.title;
+document.getElementById('title').textContent = META.title;
+document.getElementById('subtitle').textContent = META.subtitle;
+document.getElementById('note').textContent = META.note;
+stage.setAttribute('aria-label', META.ariaLabel);
+const works = document.getElementById('works');
+if (!META.works.length) document.querySelector('.works').hidden = true;
+for (const [label, desc, href] of META.works) {
+  const li = document.createElement('li'), a = document.createElement('a'), sp = document.createElement('span');
+  a.href = href; a.textContent = label; a.target = '_blank'; a.rel = 'noopener'; sp.textContent = desc;
+  li.append(a, sp); works.append(li);
+}
+const playBtn = document.getElementById('play'), scrub = document.getElementById('scrub'), timeEl = document.getElementById('time');
+scrub.max = window.DURATION;
+let cur = 0, playing = false, last = 0;
+const chap = document.getElementById('chapters');
+const btns = SEGS.map((s, i) => {
+  const li = document.createElement('li'), b = document.createElement('button');
+  b.type = 'button'; b.textContent = `${i + 1}・${s.name}`; b.onclick = () => { playerPause(); playerShow(s.a); };
+  li.append(b); chap.append(li); return b;
+});
+function playerShow(t) {
+  cur = clamp(t, 0, window.DURATION); scrub.value = cur;
+  timeEl.textContent = `${cur.toFixed(1)} / ${window.DURATION.toFixed(1)}`;
+  window.seek(cur);
+  const i = segIndex(cur); btns.forEach((b, j) => b.setAttribute('aria-current', j === i ? 'true' : 'false'));
+}
+function playerTick(now) { if (!playing) return; cur += (now - last) / 1000; last = now; if (cur >= window.DURATION) { cur = window.DURATION; playerPause(); } playerShow(cur); if (playing) requestAnimationFrame(playerTick); }
+function playerPlay() { if (cur >= window.DURATION - 0.05) cur = 0; playing = true; playBtn.textContent = '暫停'; last = performance.now(); requestAnimationFrame(playerTick); }
+function playerPause() { playing = false; playBtn.textContent = '播放'; }
+playBtn.onclick = () => (playing ? playerPause() : playerPlay());
+scrub.oninput = () => { playerPause(); playerShow(Number(scrub.value)); };
+document.getElementById('prev').onclick = () => { playerPause(); playerShow(SEGS[segIndex(cur - 0.6)].a); };
+document.getElementById('next').onclick = () => { playerPause(); const i = segIndex(cur) + 1; playerShow(i < SEGS.length ? SEGS[i].a : window.DURATION); };
+document.getElementById('fs').onclick = () => { const th = document.getElementById('theater'); document.fullscreenElement ? document.exitFullscreen() : th.requestFullscreen?.(); };
+addEventListener('keydown', (e) => {
+  if (document.documentElement.classList.contains('embed')) return;
+  if (e.target.closest('input,button')) return;
+  if (e.key === ' ') { e.preventDefault(); playing ? playerPause() : playerPlay(); }
+  else if (e.key === 'ArrowRight') document.getElementById('next').click();
+  else if (e.key === 'ArrowLeft') document.getElementById('prev').click();
+  else if (e.key === 'f' || e.key === 'F') document.getElementById('fs').click();
+});
+window.ready.then(() => playerShow(cur));
+// ptt_teach 契約 §3：被嵌入時才啟用 postMessage
+addEventListener('message', (e) => {
+  if (e.source !== window.parent || window.parent === window) return;
+  const m = e.data;
+  if (!m || m.ptt !== 1 || m.type !== 'seek' || typeof m.t !== 'number' || !Number.isFinite(m.t)) return;
+  window.seek(m.t);
+});
+if (window.parent !== window) window.ready.then(() => parent.postMessage({ ptt: 1, type: 'ready', duration: window.DURATION }, '*'));
+</script>
+</html>
