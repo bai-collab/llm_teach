@@ -8,11 +8,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
 <style>
-/* 版面：一塊黑板上由上而下的四個單元，像課程地圖；和各支動畫同一套黑板外觀 */
+/* 版面：一塊黑板上由上而下的五個單元，像課程地圖；和各支動畫同一套黑板外觀 */
 :root{
   --board:#23392f; --board-deep:#1a2b23; --frame:#6e4c31;
   --chalk:#efe9d8; --chalk-dim:#a9b3a6; --yellow:#f2c14e;
-  --orange:#e8875b; --blue:#7fb6d9; --green:#8fd18a;
+  --orange:#e8875b; --blue:#7fb6d9; --green:#8fd18a; --red:#e66a5c;
   --font-chalk:"LXGW WenKai TC","Kaiti TC","DFKai-SB","BiauKai",serif;
   --font-body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
   color-scheme:dark;
@@ -68,8 +68,8 @@ footer a{color:var(--chalk)}
 <body>
 <div class="wrap">
   <header class="board">
-    <h1>跟 AI 一起工作：<em>給老師的四單元課程</em></h1>
-    <p class="lead">從「老師當導演」開始，到為什麼要換一家 AI 審查、本工作區的規則怎麼運作，最後動手改造工具。每個單元先看動畫，再讀講義；動畫都可以逐段停下來解說。</p>
+    <h1>跟 AI 一起工作：<em>給老師的五單元課程</em></h1>
+    <p class="lead">從「老師當導演」開始，到為什麼要換一家 AI 審查、本工作區的規則怎麼運作，動手改造工具，最後回到教育現場談 AI 素養。每個單元先看動畫，再讀講義；動畫都可以逐段停下來解說。</p>
     <a class="game" href="world/"><span class="gk">遊戲版</span><span class="gt">AI 協作群島<small>操控 3D 老師走過四座島：和 AI 小幫手聊天、翻過山脊跳出局部解、踩亮流程石板、在 Hook 閘門擋下危險動作；西邊還有 Skill 圖書館，選目的就幫你排好要用的 skill。</small></span><span class="go">開始探索 ›</span></a>
   </header>
 
@@ -125,6 +125,18 @@ footer a{color:var(--chalk)}
         <li><a href="animations/handwired-explained/"><span class="kind anim">動畫</span><span class="t">程式變成神經網路？拆解 Handwired<small>if、迴圈改寫成電路，精確與梯度的前提</small></span><span class="len">134 秒</span></a></li>
       </ol>
       <p class="ask">課堂提問：如果要寫一個 hook 擋住你最怕 AI 犯的錯，你會擋什麼？</p>
+    </section>
+
+    <section class="unit" style="--unit:var(--red)">
+      <div class="num" aria-hidden="true">五</div>
+      <div class="head"><h2>教育領域</h2><div class="meta"><span class="chip">所有老師</span><span class="chip">約 15 分鐘</span></div></div>
+      <div class="rail" aria-hidden="true"></div>
+      <p class="goal">學完能說出：臺灣中小學教師與學生 AI 素養框架的四向度三層級；師生在 AI 協作中如何守住人類能動性與知識能動性。</p>
+      <ol class="steps">
+        <li><a href="animations/ai-literacy-teacher/"><span class="kind anim">動畫</span><span class="t">教師 AI 素養<small>用前畫邊界、用中只給初稿、用後看真學會</small></span><span class="len">120 秒</span></a></li>
+        <li><a href="animations/ai-literacy-student/"><span class="kind anim">動畫</span><span class="t">學生 AI 素養<small>定、問、查、留：守住學習主導權</small></span><span class="len">120 秒</span></a></li>
+      </ol>
+      <p class="ask">課堂提問：你的課堂裡，哪一個環節最不該交給 AI？</p>
     </section>
   </main>
 

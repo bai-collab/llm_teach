@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="zh-Hant">
+<script>if(/[?&]embed=1\b/.test(location.search))document.documentElement.classList.add('embed')</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>教師 AI 素養：如何守住能動性</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* repo 轉教學動畫網頁｜通用骨架（黑板舞台）。新動畫只改「設定區」與「場景區」。 */
+:root{
+  --board:#23392f; --board-deep:#1a2b23; --frame:#6e4c31;
+  --chalk:#efe9d8; --chalk-dim:#a9b3a6;
+  --yellow:#f2c14e; --orange:#e8875b; --blue:#7fb6d9; --green:#8fd18a; --red:#e66a5c;
+  --font-chalk:"LXGW WenKai TC","Kaiti TC","DFKai-SB","BiauKai",serif;
+  --font-body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--board-deep);color:var(--chalk)}
+body{margin:0;font-family:var(--font-body);padding-inline:16px;padding-block:20px 28px}
+.wrap{max-width:1600px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.theater{display:flex;flex-direction:column;gap:12px;align-items:center}
+.theater .caption{align-self:stretch}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 16px}
+h1{font-family:var(--font-chalk);font-weight:700;font-size:clamp(1.5rem,3.2vw,2.1rem);margin:0}
+.sub{color:var(--chalk-dim);font-size:.95rem;margin:0}
+.board{box-sizing:border-box;border:14px solid var(--frame);border-radius:6px;background:var(--board);box-shadow:inset 0 0 60px rgba(0,0,0,.45);max-width:100%;
+  width:min(100%, calc((100vh - 250px) * 16 / 9 + 28px));width:min(100%, calc((100dvh - 250px) * 16 / 9 + 28px));min-width:min(100%, 360px)}
+/* 全螢幕：預留兩行字幕（字級與行高都以 vh 計），舞台高度＝100vh－上下留白－間距－兩行字幕－木框 */
+.theater:fullscreen{background:var(--board-deep);justify-content:center;gap:1.5vh;padding:2vh 2vw;box-sizing:border-box}
+.theater:fullscreen .board{flex:none;width:min(100%, calc((100vh - 4vh - 1.5vh - 9vh - 28px) * 16 / 9 + 28px))}
+.theater:fullscreen .caption{flex:none;text-align:center;font-size:min(2.4vw,3.2vh);line-height:1.4;min-height:2.8em;max-width:100%}
+@media (max-width:640px){.board{border-width:8px}}
+/* 內嵌（?embed=1）：只留舞台與字幕，尺寸全用 vh，播放由外層 postMessage 控制 */
+html.embed body{padding:0;overflow:hidden}
+html.embed header,html.embed .controls,html.embed .chapters,html.embed .works,html.embed .note{display:none}
+html.embed .wrap{max-width:none;gap:0}
+html.embed .theater{gap:1vh}
+html.embed .board{width:min(100%, calc(89vh * 16 / 9));border-width:1.4vh}
+html.embed .caption{font-size:2.6vh;line-height:1.4;min-height:3.8vh;text-align:center;padding:0 1vh;margin:0}
+.board svg{display:block;width:100%;height:auto;aspect-ratio:16/9}
+.caption{font-family:var(--font-chalk);font-size:clamp(1.05rem,2.2vw,1.45rem);line-height:1.5;min-height:2.3em;margin:0}
+.caption b{color:var(--yellow);font-weight:700}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+button{font:inherit;font-size:.95rem;color:var(--chalk);background:transparent;border:1.5px solid var(--chalk-dim);border-radius:999px;padding:.4em 1em;cursor:pointer}
+button:hover{border-color:var(--yellow);color:var(--yellow)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+#play{min-width:5.5em;border-color:var(--yellow);color:var(--yellow)}
+#scrub{flex:1 1 220px;min-width:0;accent-color:var(--yellow)}
+#time{font-variant-numeric:tabular-nums;color:var(--chalk-dim);font-size:.9rem;min-width:6.5em;text-align:right}
+.chapters{display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:0;list-style:none}
+.chapters button{font-size:.85rem;padding:.25em .8em;border-color:rgba(239,233,216,.25);color:var(--chalk-dim)}
+.chapters button[aria-current="true"]{border-color:var(--yellow);color:var(--yellow)}
+.note{color:var(--chalk-dim);font-size:.85rem;margin:0}
+.works h2{font-family:var(--font-chalk);font-size:1.15rem;margin:0 0 6px;color:var(--yellow)}
+.works ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 16px}
+.works a{color:var(--chalk);text-underline-offset:3px}
+.works span{display:block;color:var(--chalk-dim);font-size:.85rem}
+.t-chalk{font-family:var(--font-chalk);fill:var(--chalk)}
+.t-body{font-family:var(--font-body);fill:var(--chalk)}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1 id="title"></h1>
+    <p class="sub" id="subtitle"></p>
+  </header>
+  <div class="theater" id="theater">
+    <div class="board"><svg id="stage" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img"></svg></div>
+    <p class="caption" id="caption" aria-live="polite"></p>
+  </div>
+  <div class="controls">
+    <button id="prev" type="button">上一段</button>
+    <button id="play" type="button">播放</button>
+    <button id="next" type="button">下一段</button>
+    <input id="scrub" type="range" min="0" max="1" step="0.05" value="0" aria-label="時間軸">
+    <span id="time"></span>
+    <button id="fs" type="button">全螢幕</button>
+  </div>
+  <ul class="chapters" id="chapters"></ul>
+  <section class="works" aria-labelledby="works-h"><h2 id="works-h">延伸閱讀</h2><ul id="works"></ul></section>
+  <p class="note" id="note"></p>
+</div>
+
+<script>
+'use strict';
+// ===================== 設定區（段落與字幕由 timing.json 注入）=====================
+// ===== llm_teach 動畫共用圖形（不得與範本播放器或工具重名）=====
+const C = { yellow: 'var(--yellow)', blue: 'var(--blue)', green: 'var(--green)', red: 'var(--red)', orange: 'var(--orange)', purple: '#b9a3e3', chalk: 'var(--chalk)', dim: 'var(--chalk-dim)', deep: 'var(--board-deep)' };
+function arrow(x1, y1, x2, y2, color = C.dim, op = 1, both = false, k = 1, dash = '') {
+  const ex = lerp(x1, x2, k), ey = lerp(y1, y2, k);
+  const ang = Math.atan2(y2 - y1, x2 - x1), h = 16;
+  const head = (x, y, a) => `<polygon points="${x},${y} ${x - h * Math.cos(a - 0.45)},${y - h * Math.sin(a - 0.45)} ${x - h * Math.cos(a + 0.45)},${y - h * Math.sin(a + 0.45)}" fill="${color}"/>`;
+  let g = `<g opacity="${op}"><line x1="${x1}" y1="${y1}" x2="${ex}" y2="${ey}" stroke="${color}" stroke-width="4" stroke-linecap="round"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
+  if (k >= 0.99) { g += head(x2, y2, ang); if (both) g += head(x1, y1, ang + Math.PI); }
+  return g + '</g>';
+}
+// 曲線箭頭：二次貝茲，k 為繪製進度（以 dasharray 截斷）
+function curve(x1, y1, cx, cy, x2, y2, color = C.dim, op = 1, k = 1, label = '', lx = 0, ly = 0) {
+  const len = 1400;
+  let g = `<g opacity="${op}"><path d="M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="4" stroke-dasharray="10 9" pathLength="${len}" style="stroke-dashoffset:0"/>`;
+  if (k < 0.99) g = `<g opacity="${op}"><path d="M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="4" pathLength="${len}" stroke-dasharray="${(len * k).toFixed(1)} ${len}"/>`;
+  else {
+    const a = Math.atan2(y2 - cy, x2 - cx), h = 16;
+    g += `<polygon points="${x2},${y2} ${x2 - h * Math.cos(a - 0.45)},${y2 - h * Math.sin(a - 0.45)} ${x2 - h * Math.cos(a + 0.45)},${y2 - h * Math.sin(a + 0.45)}" fill="${color}"/>`;
+  }
+  if (label) g += txt(lx, ly, label, { c: 't-body', s: 24, f: color, o: k >= 0.99 ? 1 : 0 });
+  return g + '</g>';
+}
+function hframe(x, y, w, h, op, label = '', color = C.yellow, glow = 0, size = 32) {
+  return `<g opacity="${op}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="26" fill="rgba(242,193,78,${0.04 + 0.08 * glow})" stroke="${color}" stroke-width="${4 + 2 * glow}" stroke-dasharray="16 12"/>` +
+    (label ? txt(x + 26, y + 44, label, { s: size, w: 1, f: color }) : '') + '</g>';
+}
+function card(x, y, W, h, op, lines, color = C.chalk) {
+  // lines: [[文字, 字級, 顏色, 粗體, 字型類別, 置中]]，依序往下排
+  let g = `<g opacity="${op}">${box(x, y, W, h, color, 1, C.deep)}`;
+  let yy = y + 14;
+  for (const [s, size = 28, f = C.chalk, bold = false, c = 't-chalk', cx = false] of lines) {
+    yy += size * 1.25;
+    g += txt(cx ? x + W / 2 : x + 24, yy, s, { s: size, f, w: bold, c, a: cx ? 'middle' : 'start' });
+    yy += size * 0.3;
+  }
+  return g + '</g>';
+}
+function ccard(x, y, w, h, op, title, sub, color = C.chalk, tsize = 32, ssize = 24) {
+  return `<g opacity="${op}">${box(x, y, w, h, color, 1, C.deep)}` +
+    txt(x + w / 2, y + h / 2 + (sub ? -6 : tsize * 0.35), title, { a: 'middle', s: tsize, w: 1, f: color }) +
+    (sub ? txt(x + w / 2, y + h / 2 + ssize + 8, sub, { a: 'middle', c: 't-body', s: ssize, f: C.dim }) : '') + '</g>';
+}
+function chip(x, y, w, label, op, color = C.chalk, size = 26, h = 58) {
+  return `<g opacity="${op}">${box(x, y, w, h, color, 1, C.deep)}${txt(x + w / 2, y + h / 2 + size * 0.36, label, { a: 'middle', s: size, f: color })}</g>`;
+}
+function tick(x, y, s, op, color = C.green) {
+  return `<path d="M${x - s} ${y} L${x - s / 3} ${y + s * 0.7} L${x + s} ${y - s * 0.8}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="${op}"/>`;
+}
+function cross(x, y, s, op, color = C.red) {
+  return `<g opacity="${op}" stroke="${color}" stroke-width="12" stroke-linecap="round"><line x1="${x - s}" y1="${y - s}" x2="${x + s}" y2="${y + s}"/><line x1="${x + s}" y1="${y - s}" x2="${x - s}" y2="${y + s}"/></g>`;
+}
+function dot(x, y, r, color, op = 1) { return `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="${op}"/>`; }
+function underline(x1, x2, y, k, color = C.yellow, op = 1) { return `<line x1="${x1}" y1="${y}" x2="${lerp(x1, x2, k)}" y2="${y}" stroke="${color}" stroke-width="4" opacity="${op}"/>`; }
+// 依進度逐一出現：第 i 個元素在 t0 + i*step 開始、花 dur 秒
+const stagger = (u, t0, i, step = 0.6, dur = 0.7) => ease(P(u, t0 + i * step, t0 + i * step + dur));
+
+// ===== AI 素養動畫共用圖形（教師版、學生版共用）=====
+function hPerson(x, y, s, color, op) {
+  return `<g opacity="${op}" fill="none" stroke="${color}" stroke-width="5" stroke-linecap="round"><circle cx="${x}" cy="${y - 55 * s}" r="${30 * s}"/><path d="M${x - 52 * s} ${y + 60 * s} Q${x - 52 * s} ${y - 12 * s} ${x} ${y - 12 * s} Q${x + 52 * s} ${y - 12 * s} ${x + 52 * s} ${y + 60 * s}"/></g>`;
+}
+function hRobot(x, y, s, op) {
+  const c = C.blue;
+  return `<g opacity="${op}" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round"><rect x="${x - 55 * s}" y="${y - 55 * s}" width="${110 * s}" height="${100 * s}" rx="${18 * s}"/><line x1="${x}" y1="${y - 55 * s}" x2="${x}" y2="${y - 80 * s}"/><circle cx="${x}" cy="${y - 86 * s}" r="${6 * s}" fill="${c}"/><circle cx="${x - 22 * s}" cy="${y - 12 * s}" r="${8 * s}" fill="${c}"/><circle cx="${x + 22 * s}" cy="${y - 12 * s}" r="${8 * s}" fill="${c}"/><line x1="${x - 20 * s}" y1="${y + 20 * s}" x2="${x + 20 * s}" y2="${y + 20 * s}"/></g>`;
+}
+function hWheel(x, y, r, op, rot = 0) {
+  let g = `<g opacity="${op}" fill="none" stroke="${C.yellow}" stroke-width="8" stroke-linecap="round"><circle cx="${x}" cy="${y}" r="${r}"/><circle cx="${x}" cy="${y}" r="${r * 0.22}"/>`;
+  for (const a0 of [90, 210, 330]) {
+    const a = (a0 + rot) * Math.PI / 180;
+    g += `<line x1="${x + Math.cos(a) * r * 0.22}" y1="${y + Math.sin(a) * r * 0.22}" x2="${x + Math.cos(a) * r}" y2="${y + Math.sin(a) * r}"/>`;
+  }
+  return g + '</g>';
+}
+function hLens(x, y, r, op) {
+  return `<g opacity="${op}" fill="none" stroke="${C.blue}" stroke-linecap="round"><circle cx="${x}" cy="${y}" r="${r}" stroke-width="8"/><line x1="${x + r * 0.72}" y1="${y + r * 0.72}" x2="${x + r * 1.4}" y2="${y + r * 1.4}" stroke-width="16"/></g>`;
+}
+// 右上角進度標籤：labels 依序排列，cur 為目前步驟
+function hTrack(u, items, cur) {
+  let g = '';
+  items.forEach(([label, x, w], i) => {
+    const on = i === cur;
+    g += chip(x, 100, w, label, ease(P(u, 0.2, 0.9)) * (on ? 1 : 0.45), on ? C.yellow : C.dim, 26, 56);
+  });
+  return g;
+}
+// 四向度 × 三層級表格
+function hGrid(u, rows) {
+  let g = txt(1520, 150, '核心：以人為中心', { a: 'end', s: 32, w: 1, f: C.yellow, o: ease(P(u, 0.3, 1)) });
+  ['取得理解', '深化應用', '創造轉型'].forEach((l, j) => { g += chip(430 + j * 370, 220, 350, l, stagger(u, 0.6, j, 0.3), C.yellow, 28, 62); });
+  rows.forEach((r, i) => {
+    const o = stagger(u, 1.8, i, 1.5), y = 310 + i * 120, col = r.color || C.chalk;
+    g += chip(80, y, 330, r.name, o, col, 28, 100);
+    r.cells.forEach((c, j) => {
+      g += `<g opacity="${o}">${box(430 + j * 370, y, 350, 100, 'rgba(239,233,216,.35)', 1, C.deep)}${txt(430 + j * 370 + 175, y + 59, c, { a: 'middle', c: 't-body', s: 24 })}</g>`;
+    });
+  });
+  return g;
+}
+// 兩種能動性（教師、學生共用版面）
+function hAgency(u, leftSub, rightSub, bottom) {
+  const a = ease(P(u, 0.6, 1.6)), b = ease(P(u, 3.5, 4.5));
+  let g = hWheel(480, 400, 105, a, lerp(-60, 0, a));
+  g += txt(480, 590, '人類能動性', { a: 'middle', s: 46, w: 1, f: C.yellow, o: a });
+  g += txt(480, 650, leftSub, { a: 'middle', s: 30, o: a });
+  g += txt(480, 700, 'Human Agency', { a: 'middle', c: 't-body', s: 24, f: C.dim, o: a });
+  g += `<line x1="800" y1="290" x2="800" y2="720" stroke="${C.dim}" stroke-width="3" stroke-dasharray="10 10" opacity="${Math.min(a, b)}"/>`;
+  g += hLens(1090, 380, 85, b);
+  g += txt(1120, 590, '知識能動性', { a: 'middle', s: 46, w: 1, f: C.blue, o: b });
+  g += txt(1120, 650, rightSub, { a: 'middle', s: 30, o: b });
+  g += txt(1120, 700, 'Epistemic Agency', { a: 'middle', c: 't-body', s: 24, f: C.dim, o: b });
+  g += txt(800, 800, bottom, { a: 'middle', s: 38, w: 1, f: C.yellow, o: ease(P(u, 8, 9)) });
+  return g;
+}
+const META = {
+  title: '教師 AI 素養：如何守住能動性',
+  subtitle: '9 段・約 2 分鐘・可停在任一段',
+  ariaLabel: '黑板動畫：說明臺灣中小學教師 AI 素養框架的四向度三層級，以及教師在 AI 協作中維持人類能動性與知識能動性的用前、用中、用後作法。',
+  note: '出處：教育部《臺灣中小學教師與學生 AI 素養框架》（2026 年 3 月）p.5、8、10–11、15–17、20、23–25、30。「用前／用中／用後」分法與第 9 段例子為作者觀點。鍵盤：空白鍵播放／暫停，左右方向鍵切換段落，F 鍵全螢幕。畫面只由時間決定。',
+  works: [],
+};
+const T_TRACK = [['用前', 1040, 140], ['用中', 1200, 140], ['用後', 1360, 140]];
+
+function s1(u) {
+  let g = head(u, '開場', 'AI 來了，誰做決定？');
+  const o = (i) => stagger(u, 0.6, i, 0.7);
+  g += hPerson(380, 520, 1.3, C.chalk, o(0)) + txt(380, 660, '教師', { a: 'middle', s: 34, o: o(0) });
+  g += hRobot(800, 520, 1.3, o(1)) + txt(800, 660, 'AI', { a: 'middle', s: 34, f: C.blue, o: o(1) });
+  g += hPerson(1220, 520, 1.1, C.green, o(2)) + txt(1220, 660, '學生', { a: 'middle', s: 34, f: C.green, o: o(2) });
+  g += arrow(470, 480, 700, 480, C.dim, o(1), true);
+  g += arrow(900, 480, 1140, 480, C.dim, o(2), true);
+  g += txt(800, 330, '？', { a: 'middle', s: 130, w: 1, f: C.yellow, o: ease(P(u, 3, 4)) });
+  g += txt(800, 770, '誰掌握決策主導權？', { a: 'middle', s: 50, w: 1, f: C.yellow, o: ease(P(u, 5, 6)) });
+  return g;
+}
+
+function s2(u) {
+  let g = head(u, '角色轉變', '老師的新角色');
+  const old = ease(P(u, 0.5, 1.3)) * (1 - 0.6 * ease(P(u, 3, 4)));
+  g += ccard(100, 390, 380, 150, old, '知識傳遞者', '過去的角色', C.chalk, 40, 24);
+  const k = ease(P(u, 2, 3));
+  g += arrow(500, 465, 700, 465, C.yellow, k, false, k);
+  const roles = [['學習歷程的引導者', '引導學生思考與探究', C.green], ['學習設計師', '把 AI 融入學習活動設計', C.blue], ['倫理守門人', '識別偏見、守護隱私', C.orange]];
+  roles.forEach(([t, s, c], i) => { g += ccard(740, 220 + i * 170, 760, 140, stagger(u, 3, i, 0.9), t, s, c, 38, 24); });
+  g += txt(800, 800, '核心：教師的專業能動性（Professional Agency）', { a: 'middle', s: 32, f: C.yellow, o: ease(P(u, 7, 8)) });
+  return g;
+}
+
+function s3(u) {
+  let g = head(u, '框架結構', '四向度 × 三層級');
+  g += hGrid(u, [
+    { name: 'AI 倫理', color: C.orange, cells: ['掌握 AI 技術與倫理', '內化 AI 倫理教學責任', '形塑以 AI 促進創新的倫理'] },
+    { name: 'AI 基礎與技術', color: C.blue, cells: ['培養 AI 的基礎知識', '應用 AI 的技能', '使用 AI 創新'] },
+    { name: 'AI 賦能教學', color: C.green, cells: ['善用 AI 輔助學科教學', '整合 AI 與教學法', '促進 AI 教學轉型創新'] },
+    { name: 'AI 促進專業發展', color: C.purple, cells: ['覺知 AI 時代專業角色', 'AI 與數據驅動專業發展', '結合 AI 共創專業發展'] },
+  ]);
+  return g;
+}
+
+function s4(u) {
+  let g = head(u, '非同步發展', '不必全都到頂');
+  const x0 = 520, W = 880, seg = W / 3;
+  g += txt(1520, 225, '長條為示意；前兩列取自原文例子', { a: 'end', c: 't-body', s: 22, f: C.dim, o: ease(P(u, 0.5, 1.2)) });
+  ['取得理解', '深化應用', '創造轉型'].forEach((l, j) => { g += txt(x0 + (j + 0.5) * seg, 285, l, { a: 'middle', s: 26, f: C.yellow, o: ease(P(u, 0.5, 1.2)) }); });
+  const rows = [['AI 倫理', 2, C.orange], ['AI 基礎與技術', 1, C.blue], ['AI 賦能教學', 2, C.green], ['AI 促進專業發展', 1, C.purple]];
+  rows.forEach(([name, lv, col], i) => {
+    const y = 320 + i * 105, o = stagger(u, 1, i, 0.5);
+    g += txt(120, y + 40, name, { s: 30, f: col, o });
+    g += `<rect x="${x0}" y="${y}" width="${W}" height="56" rx="12" fill="none" stroke="rgba(239,233,216,.3)" stroke-width="2" opacity="${o}"/>`;
+    const w = lv * seg * ease(P(u, 1.5 + i * 0.6, 3 + i * 0.6));
+    g += `<rect x="${x0}" y="${y}" width="${w.toFixed(1)}" height="56" rx="12" fill="${col}" opacity="${0.75 * o}"/>`;
+  });
+  for (let j = 1; j < 3; j++) g += `<line x1="${x0 + j * seg}" y1="305" x2="${x0 + j * seg}" y2="705" stroke="${C.dim}" stroke-width="2" stroke-dasharray="6 8" opacity="${ease(P(u, 0.5, 1.2))}"/>`;
+  g += txt(800, 790, '不強制每位教師都達到最高的創造層級', { a: 'middle', s: 42, w: 1, f: C.yellow, o: ease(P(u, 5.5, 6.5)) });
+  return g;
+}
+
+function s5(u) {
+  let g = head(u, '核心概念', '兩種能動性');
+  return g + hAgency(u, '決策主導權始終在人', '辨識真偽，不讓演算法取代判斷', '讓 AI 成為思考的延伸，而非替代');
+}
+
+function s6(u) {
+  let g = head(u, '作法一', '用前：先畫邊界') + hTrack(u, T_TRACK, 0);
+  const k = ease(P(u, 0.8, 2.2));
+  g += `<line x1="560" y1="320" x2="560" y2="${lerp(320, 780, k)}" stroke="${C.yellow}" stroke-width="5" stroke-dasharray="14 10"/>`;
+  g += txt(560, 300, 'AI 應用的邊界', { a: 'middle', s: 26, f: C.yellow, o: k });
+  g += hPerson(310, 560, 1.2, C.yellow, ease(P(u, 0.5, 1.3)));
+  g += txt(310, 700, '老師決定', { a: 'middle', s: 34, w: 1, f: C.yellow, o: ease(P(u, 0.5, 1.3)) });
+  const items = ['劃定邊界：決定 AI 使用時機與策略', '選用適性適規、具資安防護的工具', '與學生共訂「班級 AI 使用公約」', '必要時「暫停」AI，讓學生回到自身推理'];
+  items.forEach((s, i) => { g += chip(640, 330 + i * 115, 860, s, stagger(u, 2.5, i, 1.6), i === 3 ? C.orange : C.chalk, 30, 80); });
+  return g;
+}
+
+function s7(u) {
+  let g = head(u, '作法二', '用中：AI 只給初稿') + hTrack(u, T_TRACK, 1);
+  const o1 = ease(P(u, 0.5, 1.3)), o2 = ease(P(u, 2, 2.8));
+  g += hRobot(190, 525, 1.1, o1);
+  g += ccard(330, 440, 230, 150, o1, '初稿', 'AI 產出', C.blue, 40, 22);
+  g += arrow(575, 515, 700, 515, C.dim, o2, false, o2);
+  g += card(710, 400, 300, 230, o2, [['教師把關', 34, C.yellow, true, 't-chalk', true], ['事實查核', 28, C.chalk, false, 't-body', true], ['倫理審查', 28, C.chalk, false, 't-body', true]], C.yellow);
+  const outs = [['接受', C.green], ['修訂', C.yellow], ['拒絕', C.red]];
+  outs.forEach(([s, c], i) => {
+    const o = stagger(u, 4, i, 0.7);
+    g += arrow(1020, 515, 1140, 365 + i * 150, c, o, false, o);
+    g += chip(1150, 325 + i * 150, 330, s, o, c, 32, 80);
+  });
+  g += txt(800, 795, '慢 AI：透過多輪對話深化理解，不追求快速答案', { a: 'middle', s: 30, f: C.chalk, o: ease(P(u, 8, 9)) });
+  return g;
+}
+
+function s8(u) {
+  let g = head(u, '作法三', '用後：真的學會了嗎？') + hTrack(u, T_TRACK, 2);
+  const h1 = 360 * ease(P(u, 0.6, 2)), h2 = 140 * ease(P(u, 1.2, 2.6));
+  g += `<rect x="230" y="${700 - h1}" width="140" height="${h1}" rx="10" fill="${C.green}" opacity=".8"/>`;
+  g += `<rect x="450" y="${700 - h2}" width="140" height="${h2}" rx="10" fill="${C.orange}" opacity=".8"/>`;
+  g += `<line x1="200" y1="700" x2="620" y2="700" stroke="${C.chalk}" stroke-width="3" opacity="${ease(P(u, 0.4, 1))}"/>`;
+  g += txt(300, 745, '任務表現', { a: 'middle', s: 28, o: ease(P(u, 0.6, 1.4)) });
+  g += txt(520, 745, '知識內化', { a: 'middle', s: 28, o: ease(P(u, 1.2, 2)) });
+  g += txt(520, 535, '？', { a: 'middle', s: 64, w: 1, f: C.yellow, o: ease(P(u, 2.8, 3.5)) });
+  g += chip(700, 360, 300, '認知卸載', stagger(u, 3.8, 0, 0.8), C.red, 32, 80);
+  g += chip(700, 480, 300, '虛假精熟', stagger(u, 3.8, 1, 0.8), C.red, 32, 80);
+  g += txt(850, 610, '任務完成，但學習未內化', { a: 'middle', c: 't-body', s: 26, f: C.dim, o: ease(P(u, 5.5, 6.2)) });
+  const k = ease(P(u, 7, 7.8));
+  g += arrow(1020, 470, 1100, 470, C.yellow, k, false, k);
+  g += ccard(1110, 370, 410, 200, ease(P(u, 7.6, 8.5)), '過程導向評量', '看思考歷程，不只看成品', C.yellow, 40, 24);
+  return g;
+}
+
+function s9(u) {
+  let g = head(u, '結語', '例子與結語');
+  const steps = [['定目標', '學習目標＋錯誤類型'], ['AI 出題', '依條件生成'], ['逐題驗算', '標出修改處'], ['學生找錯', '留一題 AI 錯題']];
+  steps.forEach(([t, s], i) => {
+    const o = stagger(u, 0.5, i, 0.8), x = 80 + i * 375;
+    g += ccard(x, 230, 330, 150, o, t, s, i === 1 ? C.blue : C.chalk, 34, 22);
+    if (i < 3) g += arrow(x + 334, 305, x + 371, 305, C.dim, stagger(u, 0.5, i + 1, 0.8));
+  });
+  g += txt(80, 425, '（作者自擬例子：用 AI 出數學練習題）', { c: 't-body', s: 22, f: C.dim, o: ease(P(u, 1, 1.8)) });
+  g += txt(800, 560, '判斷、責任與陪伴，', { a: 'middle', s: 56, w: 1, f: C.yellow, o: ease(P(u, 5, 6)) });
+  g += txt(800, 640, '仍由老師來做。', { a: 'middle', s: 56, w: 1, f: C.yellow, o: ease(P(u, 6, 7)) });
+  g += txt(800, 760, '能動性不是拒絕 AI，而是每個決定都說得出理由、也收得回來', { a: 'middle', s: 30, o: ease(P(u, 8, 9)) });
+  return g;
+}
+
+const SEGS = [
+  { len: 12, grp: "開場", name: "AI 來了，誰做決定？", scene: s1,
+    cap: "AI 走進教室後，框架提出關鍵問題：與 AI 協作時，<b>人類是否仍掌握決策主導權</b>？" },
+  { len: 13, grp: "教師 AI 素養", name: "老師的新角色", scene: s2,
+    cap: "教師角色正從知識傳遞者，轉為<b>引導者、學習設計師與倫理守門人</b>，核心是教師的專業能動性。" },
+  { len: 15, grp: "教師 AI 素養", name: "四向度 × 三層級", scene: s3,
+    cap: "以「以人為中心」為核心，含<b>四個向度</b>，每個向度分<b>取得理解、深化應用、創造轉型</b>三層級。" },
+  { len: 11, grp: "教師 AI 素養", name: "不必全都到頂", scene: s4,
+    cap: "各向度的發展層級<b>未必相同</b>，也<b>不是每位教師都要達到創造轉型</b>層級。" },
+  { len: 14, grp: "能動性", name: "兩種能動性", scene: s5,
+    cap: "<b>人類能動性</b>：決策主導權在人；<b>知識能動性</b>：能辨識 AI 產出的真偽，不讓演算法取代價值判斷。" },
+  { len: 14, grp: "能動性", name: "用前：先畫邊界", scene: s6,
+    cap: "用前：教師劃定<b>AI 應用的邊界</b>，選對工具、訂好公約，必要時<b>暫停</b> AI，讓學生回到自身推理。" },
+  { len: 14, grp: "能動性", name: "用中：AI 只給初稿", scene: s7,
+    cap: "用中：AI 產出只是<b>初稿</b>，經事實查核與倫理審查後決定<b>接受、修訂或拒絕</b>；最終結果由使用者負責。" },
+  { len: 14, grp: "能動性", name: "用後：真的學會了嗎？", scene: s8,
+    cap: "用後：任務表現提升<b>不代表知識內化</b>，要提防認知卸載與虛假精熟，可改用<b>過程導向評量</b>。" },
+  { len: 13, grp: "結語", name: "例子與結語", scene: s9,
+    cap: "例子：定目標 → AI 出題 → 逐題驗算 → 學生找錯。<b>判斷、責任與陪伴，仍由老師來做。</b>" },
+];
+
+// ===================== 工具（通常不用改）=====================
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const P = (u, a, b) => clamp((u - a) / (b - a), 0, 1);           // u 在 [a,b] 的進度 0–1
+const ease = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const lerp = (a, b, k) => a + (b - a) * k;
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); } // 固定種子亂數
+function txt(x, y, s, o = {}) {
+  const a = o.a || 'start', size = o.s || 32, fill = o.f || 'var(--chalk)', op = o.o ?? 1, w = o.w ? 700 : 400, cls = o.c || 't-chalk';
+  return `<text x="${x}" y="${y}" class="${cls}" font-size="${size}" font-weight="${w}" text-anchor="${a}" fill="${fill}" opacity="${op}">${esc(s)}</text>`;
+}
+function box(x, y, w, h, stroke = 'var(--chalk)', op = 1, fill = 'none') {
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="${fill}" stroke="${stroke}" stroke-width="3" opacity="${op}"/>`;
+}
+function head(u, kicker, title) {
+  const o = ease(P(u, 0, 0.8));
+  return txt(80, 90, kicker, { c: 't-body', s: 24, f: 'var(--chalk-dim)', o }) + txt(80, 150, title, { s: 50, w: 1, o });
+}
+
+let acc = 0; SEGS.forEach((s) => { s.a = acc; acc += s.len; s.b = acc; });
+window.DURATION = acc;
+window.SEGS = SEGS.map(({ len, grp, name, cap, a, b }) => ({ len, grp, name, cap, a, b }));
+const stage = document.getElementById('stage'), capEl = document.getElementById('caption');
+const segIndex = (t) => { for (let i = 0; i < SEGS.length; i++) if (t < SEGS[i].b) return i; return SEGS.length - 1; };
+window.seek = async function (t) {
+  t = clamp(Number(t) || 0, 0, window.DURATION);
+  const i = segIndex(t), s = SEGS[i];
+  const u = t - s.a;
+  // 段落切換時淡入淡出（只由 t 決定）
+  const fade = Math.min(P(u, 0, 0.35), i === SEGS.length - 1 ? 1 : 1 - P(u, s.len - 0.35, s.len));
+  stage.innerHTML = `<g opacity="${fade.toFixed(3)}">${s.scene(u)}</g>` +
+    txt(1520, 870, `${i + 1} / ${SEGS.length}・${s.grp}・${s.name}`, { a: 'end', c: 't-body', s: 18, f: 'var(--chalk-dim)' });
+  capEl.innerHTML = s.cap; // 字幕只來自本檔 SEGS（作者撰寫、只含 <b>）
+  return true;
+};
+window.ready = Promise.all([document.fonts ? document.fonts.ready.catch(() => null) : null]);
+
+// ===================== 播放器外殼（只呼叫 seek）=====================
+document.title = META.title;
+document.getElementById('title').textContent = META.title;
+document.getElementById('subtitle').textContent = META.subtitle;
+document.getElementById('note').textContent = META.note;
+stage.setAttribute('aria-label', META.ariaLabel);
+const works = document.getElementById('works');
+if (!META.works.length) document.querySelector('.works').hidden = true;
+for (const [label, desc, href] of META.works) {
+  const li = document.createElement('li'), a = document.createElement('a'), sp = document.createElement('span');
+  a.href = href; a.textContent = label; a.target = '_blank'; a.rel = 'noopener'; sp.textContent = desc;
+  li.append(a, sp); works.append(li);
+}
+const playBtn = document.getElementById('play'), scrub = document.getElementById('scrub'), timeEl = document.getElementById('time');
+scrub.max = window.DURATION;
+let cur = 0, playing = false, last = 0;
+const chap = document.getElementById('chapters');
+const btns = SEGS.map((s, i) => {
+  const li = document.createElement('li'), b = document.createElement('button');
+  b.type = 'button'; b.textContent = `${i + 1}・${s.name}`; b.onclick = () => { playerPause(); playerShow(s.a); };
+  li.append(b); chap.append(li); return b;
+});
+function playerShow(t) {
+  cur = clamp(t, 0, window.DURATION); scrub.value = cur;
+  timeEl.textContent = `${cur.toFixed(1)} / ${window.DURATION.toFixed(1)}`;
+  window.seek(cur);
+  const i = segIndex(cur); btns.forEach((b, j) => b.setAttribute('aria-current', j === i ? 'true' : 'false'));
+}
+function playerTick(now) { if (!playing) return; cur += (now - last) / 1000; last = now; if (cur >= window.DURATION) { cur = window.DURATION; playerPause(); } playerShow(cur); if (playing) requestAnimationFrame(playerTick); }
+function playerPlay() { if (cur >= window.DURATION - 0.05) cur = 0; playing = true; playBtn.textContent = '暫停'; last = performance.now(); requestAnimationFrame(playerTick); }
+function playerPause() { playing = false; playBtn.textContent = '播放'; }
+playBtn.onclick = () => (playing ? playerPause() : playerPlay());
+scrub.oninput = () => { playerPause(); playerShow(Number(scrub.value)); };
+document.getElementById('prev').onclick = () => { playerPause(); playerShow(SEGS[segIndex(cur - 0.6)].a); };
+document.getElementById('next').onclick = () => { playerPause(); const i = segIndex(cur) + 1; playerShow(i < SEGS.length ? SEGS[i].a : window.DURATION); };
+document.getElementById('fs').onclick = () => { const th = document.getElementById('theater'); document.fullscreenElement ? document.exitFullscreen() : th.requestFullscreen?.(); };
+addEventListener('keydown', (e) => {
+  if (document.documentElement.classList.contains('embed')) return;
+  if (e.target.closest('input,button')) return;
+  if (e.key === ' ') { e.preventDefault(); playing ? playerPause() : playerPlay(); }
+  else if (e.key === 'ArrowRight') document.getElementById('next').click();
+  else if (e.key === 'ArrowLeft') document.getElementById('prev').click();
+  else if (e.key === 'f' || e.key === 'F') document.getElementById('fs').click();
+});
+window.ready.then(() => playerShow(cur));
+// ptt_teach 契約 §3：被嵌入時才啟用 postMessage
+addEventListener('message', (e) => {
+  if (e.source !== window.parent || window.parent === window) return;
+  const m = e.data;
+  if (!m || m.ptt !== 1 || m.type !== 'seek' || typeof m.t !== 'number' || !Number.isFinite(m.t)) return;
+  window.seek(m.t);
+});
+if (window.parent !== window) window.ready.then(() => parent.postMessage({ ptt: 1, type: 'ready', duration: window.DURATION }, '*'));
+</script>
+</html>

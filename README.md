@@ -1,8 +1,8 @@
-# llm_teach｜跟 AI 一起工作：給老師的四單元課程
+# llm_teach｜跟 AI 一起工作：給老師的五單元課程
 
 把 bai-collab 各 repo 中與 **LLM／Agent Harness／Claude Code** 相關的內容，整理成一門由淺入深的課。
 **網站版（含動畫）：<https://bai-collab.github.io/llm_teach/>**
-**遊戲版：<https://bai-collab.github.io/llm_teach/world/>**（操控 3D 老師走過四座島，每座島對應一個單元；第一島西邊還有 Skill 圖書館）
+**遊戲版：<https://bai-collab.github.io/llm_teach/world/>**（操控 3D 老師走過四座島，每座島對應單元一到四；第一島西邊還有 Skill 圖書館）
 **Skill 藏書：[skills/](skills/README.md)**（23 本教學相關 skill 原檔，依用途與目的整理）
 
 ## 🧭 課程地圖
@@ -22,6 +22,10 @@
   ▼
 [單元四] 動手改造工具｜進階・開發者｜約 40 分鐘
   講義 05 Claude Code Mod Hook → 06 延伸專案
+  │
+  ▼
+[單元五] 教育領域｜所有老師｜約 15 分鐘
+  動畫：教師 AI 素養 → 學生 AI 素養
 ```
 
 講義編號沿用建立時的順序（01～07），上課順序以這張地圖為準；每篇講義開頭都有「上一步／下一步」導覽。
@@ -74,6 +78,19 @@
 
 **課堂提問**：如果要寫一個 hook 擋住你最怕 AI 犯的錯，你會擋什麼？
 
+### 單元五　教育領域（所有老師）
+
+**學完能說出**：臺灣中小學教師與學生 AI 素養框架的四向度三層級；師生在 AI 協作中如何守住人類能動性與知識能動性。
+
+| 步驟 | 內容 | 形式 |
+|---|---|---|
+| 1 | [教師 AI 素養](https://bai-collab.github.io/llm_teach/animations/ai-literacy-teacher/)：用前畫邊界、用中只給初稿、用後看真學會 | 動畫 120 秒 |
+| 2 | [學生 AI 素養](https://bai-collab.github.io/llm_teach/animations/ai-literacy-student/)：定、問、查、留，守住學習主導權 | 動畫 120 秒 |
+
+**課堂提問**：你的課堂裡，哪一個環節最不該交給 AI？
+
+出處：教育部《臺灣中小學教師與學生 AI 素養框架》（2026 年 3 月）；動畫中「用前／用中／用後」「定、問、查、留」的分法與例子為作者觀點，畫面上已標示。
+
 ### 三種上課路線
 
 - **只有一堂課（50 分鐘）**：單元一的動畫 1 → 單元二全部 → 單元三的動畫 1。
@@ -108,6 +125,8 @@
 | **教師儀表板怎麼用（作答紀錄＋AI 分析）** | [教師儀表板導覽（網頁動畫）](https://bai-collab.github.io/llm_teach/animations/teacher-dashboard/)｜[原始檔](animations/teacher-dashboard/index.html) | 找學生、作答時間軸、最後有效成績、按送出才呼叫 AI、引用回查 |
 | **老師用 Claude Code 做闖關教材（2D＋3D）** | [闖關教材製作（網頁動畫）](https://bai-collab.github.io/llm_teach/animations/quest-material/)｜[原始檔](animations/quest-material/index.html) | 下指令、先出規格再核准、2D 關卡作答、three.js 地形與淹水情境、三道驗收 |
 | **為什麼同家族做的要給不同家族審（局部解）** | [為什麼要換家審查（3D 動畫）](https://bai-collab.github.io/llm_teach/animations/review-landscape/)｜[原始檔](animations/review-landscape/index.html) | 答案地形（比喻）、最佳解與局部解、同家族盲點相近、反例跳出局部解 |
+| **教師 AI 素養：四向度三層級、怎麼守住能動性** | [教師 AI 素養（2D 動畫）](https://bai-collab.github.io/llm_teach/animations/ai-literacy-teacher/)｜[原始檔](animations/ai-literacy-teacher/index.html) | 引導者／學習設計師／倫理守門人、人類能動性、知識能動性、慢 AI、過程導向評量 |
+| **學生 AI 素養：主導權、螺旋三層級、定問查留** | [學生 AI 素養（2D 動畫）](https://bai-collab.github.io/llm_teach/animations/ai-literacy-student/)｜[原始檔](animations/ai-literacy-student/index.html) | 學習方向、知識判斷、價值選擇、情境工程、虛假精熟、認知掙扎 |
 | **本工作區的 Harness 怎麼運作** | [本工作區的 Harness（2D 動畫）](https://bai-collab.github.io/llm_teach/animations/harness-tour/)｜[原始檔](animations/harness-tour/index.html) | 分類、翻筆記、路線圖、老師核准、派工、review-loop、錯誤紀錄、交接 |
 
 ## 🗂️ 目錄
@@ -123,7 +142,9 @@ llm_teach/
 │  ├─ teacher-dashboard/index.html   # 教師儀表板導覽（60 秒・6 段，假資料）
 │  ├─ quest-material/index.html      # 闖關教材製作（92 秒・8 段，2D＋three.js 3D）
 │  ├─ review-landscape/index.html    # 為什麼要換家審查（100 秒・8 段，3D 答案地形）
-│  └─ harness-tour/index.html        # 本工作區的 Harness（110 秒・10 段，2D）
+│  ├─ harness-tour/index.html        # 本工作區的 Harness（110 秒・10 段，2D）
+│  ├─ ai-literacy-teacher/index.html # 教師 AI 素養（120 秒・9 段，2D）
+│  └─ ai-literacy-student/index.html # 學生 AI 素養（120 秒・9 段，2D）
 ├─ lessons/                          # 講義（Markdown，GitHub 上可直接看 Mermaid 圖）
 │  ├─ 01-what-is-a-harness.md
 │  ├─ 02-local-harness-adaptive-loop.md
