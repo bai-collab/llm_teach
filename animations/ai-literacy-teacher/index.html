@@ -183,28 +183,20 @@ function hGrid(u, rows) {
   });
   return g;
 }
-// 兩種能動性（教師、學生共用版面）
-function hAgency(u, leftSub, rightSub, bottom) {
-  const a = ease(P(u, 0.6, 1.6)), b = ease(P(u, 3.5, 4.5));
-  let g = hWheel(480, 400, 105, a, lerp(-60, 0, a));
-  g += txt(480, 590, '人類能動性', { a: 'middle', s: 46, w: 1, f: C.yellow, o: a });
-  g += txt(480, 650, leftSub, { a: 'middle', s: 30, o: a });
-  g += txt(480, 700, 'Human Agency', { a: 'middle', c: 't-body', s: 24, f: C.dim, o: a });
-  g += `<line x1="800" y1="290" x2="800" y2="720" stroke="${C.dim}" stroke-width="3" stroke-dasharray="10 10" opacity="${Math.min(a, b)}"/>`;
-  g += hLens(1090, 380, 85, b);
-  g += txt(1120, 590, '知識能動性', { a: 'middle', s: 46, w: 1, f: C.blue, o: b });
-  g += txt(1120, 650, rightSub, { a: 'middle', s: 30, o: b });
-  g += txt(1120, 700, 'Epistemic Agency', { a: 'middle', c: 't-body', s: 24, f: C.dim, o: b });
-  g += txt(800, 800, bottom, { a: 'middle', s: 38, w: 1, f: C.yellow, o: ease(P(u, 8, 9)) });
-  return g;
-}
 const META = {
   title: '教師 AI 素養：如何守住能動性',
-  subtitle: '9 段・約 2 分鐘・可停在任一段',
-  ariaLabel: '黑板動畫：說明臺灣中小學教師 AI 素養框架的四向度三層級，以及教師在 AI 協作中維持人類能動性與知識能動性的用前、用中、用後作法。',
-  note: '出處：教育部《臺灣中小學教師與學生 AI 素養框架》（2026 年 3 月）p.5、8、10–11、15–17、20、23–25、30。「用前／用中／用後」分法、第 8 段長條圖（概念示意）、第 9 段例子與結語為作者觀點。鍵盤：空白鍵播放／暫停，左右方向鍵切換段落，F 鍵全螢幕。畫面只由時間決定。',
-  works: [],
+  subtitle: '12 段・約 2.8 分鐘・可停在任一段',
+  ariaLabel: '黑板動畫：說明臺灣中小學教師 AI 素養框架的四向度三層級，以人類能動性的掌舵與知識能動性的放大鏡比喻說明兩種能動性與兩者分工，並以互相質疑與修正的製作紀錄說明人與 AI 彼此評估，再以北園國小獨角仙復育案例說明學習證據，以及教師在 AI 協作中的用前、用中、用後作法。',
+  note: '出處：頁碼皆指文獻 [1] 教育部《臺灣中小學教師與學生 AI 素養框架》（2026 年 3 月）p.5、8、10–11、15–17、20、23–25、30（見上方參考文獻）。「用前／用中／用後」分法、掌舵與放大鏡比喻、第 6 段北園國小閱讀 PBL 實例（使用者提供，書名以代號呈現）、第 7 段白話分工（看得出問題／做得了主）、第 11 段長條圖（概念示意）為作者觀點。第 7 段座標圖為 AI 自擬示意（非框架原圖）；第 8 段為製作過程中對該圖的質疑與修正紀錄（經濃縮），修正版依 [1] p.10–11 文字整理。第 12 段為北園國小獨角仙復育案例（案例作者白宗恩，照片為北園課堂紀錄）。鍵盤：空白鍵播放／暫停，左右方向鍵切換段落，F 鍵全螢幕。畫面只由時間決定。',
+  works: [
+    ['[1] 教育部（2026 年 3 月）。《臺灣中小學教師與學生 AI 素養框架》（全文 PDF）', '本動畫畫面上「[1] p.N」的頁碼都指這份', 'https://drive.google.com/file/d/1ZfaFfiDPlQ9LaikpE-6D-GcZSyGTEPWn/view?usp=drive_link'],
+    ['[2] 《臺灣中小學教師與學生 AI 素養框架》簡報版（PDF）', '[1] 的重點簡報', 'https://drive.google.com/file/d/13VO7X3ey29hdlEdWx7fEAjB83R9rDevG/view?usp=drive_link'],
+    ['[3] 《未來人才 AI 能力圖像》（PDF）', '延伸參考；本動畫未引用其內容', 'https://drive.google.com/file/d/1qWpAcU3py1xvNp80HhRwPi_8qVp7IwFr/view?usp=drive_link'],
+  ],
 };
+// 範本的區塊標題固定為「延伸閱讀」；本動畫改稱「參考文獻」（載入時執行一次，不在 seek 內）
+const worksH = document.getElementById('works-h');
+if (worksH) worksH.textContent = '參考文獻';
 const T_TRACK = [['用前', 1040, 140], ['用中', 1200, 140], ['用後', 1360, 140]];
 
 function s1(u) {
@@ -261,12 +253,262 @@ function s4(u) {
   return g;
 }
 
+// ===== 教師版專用圖形：能動性三段（掌舵、放大鏡、分工）=====
+// txt 的 f（顏色）會被 .t-chalk／.t-body 的 fill 蓋過；能動性三段改用行內 style，讓黃、藍、灰等顏色生效
+const ctxt = (x, y, s, o = {}) => txt(x, y, s, o).replace('<text ', `<text style="fill:${o.f || 'var(--chalk)'}" `);
+// 大型舵輪：rot 為順時針角度；最上方的橘色把手用來看出旋轉
+function hHelm(cx, cy, r, rot, op, sw = 10) {
+  let g = `<g opacity="${op}" transform="rotate(${rot.toFixed(2)} ${cx} ${cy})" fill="none" stroke="${C.yellow}" stroke-linecap="round">`;
+  g += `<circle cx="${cx}" cy="${cy}" r="${r}" stroke-width="${sw}"/>`;
+  for (let i = 0; i < 8; i++) {
+    const a = (i * 45 - 90) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+    g += `<line x1="${cx + c * r * 0.2}" y1="${cy + s * r * 0.2}" x2="${cx + c * r}" y2="${cy + s * r}" stroke-width="${sw * 0.7}"/>`;
+    g += `<line x1="${cx + c * r}" y1="${cy + s * r}" x2="${cx + c * r * 1.26}" y2="${cy + s * r * 1.26}" stroke-width="${sw * 1.7}"${i === 0 ? ` stroke="${C.orange}"` : ''}/>`;
+  }
+  g += `<circle cx="${cx}" cy="${cy}" r="${r * 0.2}" stroke-width="${sw * 0.8}" fill="${C.deep}"/>`;
+  return g + '</g>';
+}
+// 路線（掌舵段）：直路與兩條分岔，船的位置與航向只由 u 決定
+const HELM_A = [[1000, 520], [1120, 520], [1130, 330], [1230, 330]];
+const bez = (p, t) => [0, 1].map((k) => (1 - t) ** 3 * p[0][k] + 3 * (1 - t) ** 2 * t * p[1][k] + 3 * (1 - t) * t * t * p[2][k] + t ** 3 * p[3][k]);
+const bezD = (p, t) => [0, 1].map((k) => 3 * (1 - t) ** 2 * (p[1][k] - p[0][k]) + 6 * (1 - t) * t * (p[2][k] - p[1][k]) + 3 * t * t * (p[3][k] - p[2][k]));
+const helmWob = (u) => 16 * Math.sin((u - 3) * 2.2) * P(u, 3, 4) * (1 - P(u, 6.2, 7.2));
+function helmPos(u) {
+  if (u < 7.2) return [lerp(700, 1000, ease(P(u, 1.4, 7.2))), 520 + helmWob(u)];
+  return bez(HELM_A, ease(P(u, 7.2, 10.4)));
+}
+function helmHead(u) { // 航向（度）
+  if (u < 7.2) return Math.atan2((helmWob(u + 0.01) - helmWob(u - 0.01)) / 0.02, 90) * 180 / Math.PI;
+  const d = bezD(HELM_A, ease(P(u, 7.2, 10.4)));
+  return Math.atan2(d[1], d[0]) * 180 / Math.PI;
+}
+// 放大鏡（放大鏡段）：關鍵影格 [秒, x, y]，段內以緩動內插
+const LENS_KF = [[0, 240, 375], [2.0, 240, 375], [3.8, 780, 375], [4.0, 780, 375], [4.7, 240, 463], [4.9, 240, 463], [6.0, 540, 463], [6.2, 540, 463], [6.9, 240, 551], [7.1, 240, 551], [8.6, 660, 551], [8.8, 660, 551], [9.8, 900, 551], [14, 900, 551]];
+function lensPos(u) {
+  for (let i = 1; i < LENS_KF.length; i++) {
+    if (u <= LENS_KF[i][0]) {
+      const k = ease(P(u, LENS_KF[i - 1][0], LENS_KF[i][0]));
+      return [lerp(LENS_KF[i - 1][1], LENS_KF[i][1], k), lerp(LENS_KF[i - 1][2], LENS_KF[i][2], k)];
+    }
+  }
+  return [LENS_KF.at(-1)[1], LENS_KF.at(-1)[2]];
+}
+// 放大鏡：鏡面內以 <use> 放大三列文字（不產生額外 <text>）
+function hLoupe(cx, cy, r, op) {
+  let g = `<g opacity="${op}"><defs><clipPath id="loupeClip"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath></defs>`;
+  g += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${C.deep}"/>`;
+  g += `<g clip-path="url(#loupeClip)"><g transform="translate(${cx} ${cy}) scale(1.4) translate(${-cx} ${-cy})">${[0, 1, 2].map((i) => `<use href="#aiRow${i}"/>`).join('')}</g></g>`;
+  g += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${C.blue}" stroke-width="8"/>`;
+  g += `<line x1="${cx + r * 0.72}" y1="${cy + r * 0.72}" x2="${cx + r * 1.3}" y2="${cy + r * 1.3}" stroke="${C.blue}" stroke-width="14" stroke-linecap="round"/>`;
+  return g + '</g>';
+}
+function warnIcon(x, y, op, color) {
+  return `<g opacity="${op}" fill="none" stroke="${color}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><polygon points="${x},${y - 20} ${x + 22},${y + 17} ${x - 22},${y + 17}"/><line x1="${x}" y1="${y - 7}" x2="${x}" y2="${y + 4}"/><circle cx="${x}" cy="${y + 11}" r="1.5"/></g>`;
+}
+
 function s5(u) {
-  let g = head(u, '核心概念', '兩種能動性');
-  return g + hAgency(u, '決策主導權始終在人', '辨識真偽，不讓演算法取代判斷', '讓 AI 成為思考的延伸，而非替代');
+  let g = head(u, '核心概念①', '人類能動性：掌舵');
+  const T = (a) => ease(P(u, a, a + 0.8));
+  g += ctxt(80, 225, '確保自主的行動能力', { s: 36, w: 1, f: C.yellow, o: T(0.6) });
+  g += ctxt(1520, 150, 'Human Agency・[1] p.10', { a: 'end', c: 't-body', s: 24, f: C.dim, o: T(0.6) });
+  g += ctxt(1520, 190, '掌舵為作者比喻', { a: 'end', c: 't-body', s: 24, f: C.dim, o: T(0.6) });
+  // 路線：直路＋兩條分岔，選定的一條在 7.6–8.6 秒亮成黃色，另一條變暗
+  const road = ease(P(u, 0.6, 1.6)), k = ease(P(u, 7.6, 8.6));
+  const dS = 'M640 520 L1000 520', dA = 'M1000 520 C1120 520 1130 330 1230 330', dB = 'M1000 520 C1120 520 1130 710 1230 710';
+  const band = (d, col, op) => `<path d="${d}" fill="none" stroke="${col}" stroke-width="46" opacity="${op}"/>`;
+  const mid = (d, col, op) => `<path d="${d}" fill="none" stroke="${col}" stroke-width="3" stroke-dasharray="16 14" opacity="${op}"/>`;
+  g += band(dS, 'rgba(239,233,216,.18)', road) + mid(dS, C.dim, road);
+  g += band(dB, 'rgba(239,233,216,.18)', road * (1 - 0.6 * k)) + mid(dB, C.dim, road * (1 - 0.6 * k));
+  g += band(dA, 'rgba(239,233,216,.18)', road) + mid(dA, C.dim, road);
+  g += band(dA, 'rgba(242,193,78,.4)', k) + mid(dA, C.yellow, k);
+  // AI 與建議路線
+  g += hRobot(780, 290, 0.8, T(1.0)) + ctxt(780, 392, 'AI 提供建議', { a: 'middle', s: 26, f: C.blue, o: T(1.0) });
+  const oA = stagger(u, 2.2, 0, 0.8, 0.7), oB = stagger(u, 2.2, 1, 0.8, 0.7);
+  g += chip(1290, 302, 250, '建議路線 A', oA, C.blue, 28, 56);
+  g += `<g opacity="${oA * k}"><rect x="1290" y="302" width="250" height="56" rx="18" fill="rgba(242,193,78,.2)" stroke="${C.yellow}" stroke-width="5"/></g>`;
+  g += chip(1290, 682, 250, '建議路線 B', oB * (1 - 0.6 * k), C.blue, 28, 56);
+  // 路徑軌跡與小船（航向 = 目前路線切線）
+  const pts = [];
+  for (let t = 1.6; t < Math.min(u, 10.4); t += 0.2) pts.push(helmPos(t).map((v) => v.toFixed(1)).join(','));
+  if (u >= 1.6) pts.push(helmPos(u).map((v) => v.toFixed(1)).join(','));
+  if (pts.length > 1) g += `<polyline points="${pts.join(' ')}" fill="none" stroke="${C.chalk}" stroke-width="4" stroke-dasharray="2 9" stroke-linecap="round" opacity=".7"/>`;
+  const [vx, vy] = helmPos(u);
+  g += `<g opacity="${T(0.8)}" transform="translate(${vx.toFixed(1)} ${vy.toFixed(1)}) rotate(${helmHead(u).toFixed(2)})"><polygon points="30,0 -22,-20 -10,0 -22,20" fill="${C.yellow}" stroke="${C.deep}" stroke-width="3" stroke-linejoin="round"/></g>`;
+  // 老師與舵輪：舵輪角度由航向（略為提前 0.7 秒）決定，航向變動時舵輪先轉
+  const wo = T(0.4), rot = 1.5 * helmHead(u + 0.7);
+  g += hPerson(340, 770, 0.9, C.yellow, wo);
+  g += `<g opacity="${wo}" stroke="${C.yellow}" stroke-width="5" stroke-linecap="round"><line x1="295" y1="772" x2="268" y2="572"/><line x1="385" y1="772" x2="412" y2="572"/></g>`;
+  g += hHelm(340, 470, 125, rot, wo);
+  g += dot(268, 572, 11, C.chalk, wo) + dot(412, 572, 11, C.chalk, wo);
+  g += ctxt(430, 815, '老師', { s: 30, f: C.yellow, o: wo });
+  // 由人拍板
+  g += ctxt(640, 590, '由人拍板', { s: 28, w: 1, f: C.yellow, o: T(9) });
+  [['接受', C.green], ['修訂', C.yellow], ['拒絕', C.red]].forEach(([s, c], i) => { g += chip(640, 606 + i * 58, 250, s, stagger(u, 9, i, 0.5, 0.6), c, 28, 50); });
+  g += ctxt(900, 830, '與 AI 協作時，決策主導權始終在人', { a: 'middle', s: 38, w: 1, f: C.yellow, o: T(11.2) });
+  return g;
 }
 
 function s6(u) {
+  let g = head(u, '核心概念②', '知識能動性：放大鏡');
+  const T = (a) => ease(P(u, a, a + 0.8));
+  g += ctxt(80, 225, '確保知識轉化行動的能力', { s: 36, w: 1, f: C.blue, o: T(0.6) });
+  g += ctxt(1520, 150, 'Epistemic Agency・[1] p.10', { a: 'end', c: 't-body', s: 24, f: C.dim, o: T(0.6) });
+  g += ctxt(1520, 190, '放大鏡為作者比喻', { a: 'end', c: 't-body', s: 24, f: C.dim, o: T(0.6) });
+  const co = T(0.5);
+  g += `<g opacity="${co}">${box(100, 255, 1400, 356, C.blue, 1, C.deep)}</g>`;
+  g += hRobot(190, 309, 0.45, co) + ctxt(250, 320, 'AI 產出：閱讀 PBL 書單與討論', { s: 30, w: 1, f: C.blue, o: co });
+  g += ctxt(100, 645, '北園國小閱讀 PBL 實例（書名以代號呈現）', { c: 't-body', s: 24, f: C.dim, o: co });
+  const rows = [['書單：《書名 A》作者、出版社都查得到', C.green, '查證屬實'], ['書單：《書名 B》查無此書', C.red, '幻覺：書不存在'], ['討論：AI 說的情節，書裡找不到', C.red, '捏造內容']];
+  const MARK_T = [3.6, 5.9, 8.5];
+  const [lx, ly] = lensPos(u), lo = ease(P(u, 1.4, 2.0));
+  rows.forEach(([s, col, label], i) => {
+    const top = 335 + i * 88, o = stagger(u, 1.0, i, 0.4, 0.7);
+    const act = (1 - P(Math.abs(ly - (top + 40)), 20, 60)) * lo, mk = ease(P(u, MARK_T[i], MARK_T[i] + 0.6));
+    g += `<g opacity="${o}"><rect x="125" y="${top}" width="1350" height="80" rx="14" fill="none" stroke="rgba(239,233,216,.25)" stroke-width="2"/></g>`;
+    g += `<rect x="125" y="${top}" width="1350" height="80" rx="14" fill="rgba(242,193,78,.1)" stroke="${C.yellow}" stroke-width="4" opacity="${(act * o).toFixed(3)}"/>`;
+    g += `<rect x="125" y="${top}" width="1350" height="80" rx="14" fill="none" stroke="${col}" stroke-width="4" opacity="${mk}"/>`;
+    g += txt(170, top + 52, s, { s: 34, o }).replace('<text ', `<text id="aiRow${i}" `);
+    g += chip(1010, top + 10, 440, label, mk, col, 28, 60);
+    const ix = 1045, iy = top + 40;
+    g += i === 0 ? tick(ix, iy, 14, mk, col) : cross(ix, iy, 11, mk, col);
+  });
+  g += ctxt(1500, 645, '幻覺：[1] p.23', { a: 'end', c: 't-body', s: 24, f: C.dim, o: T(5.9) });
+  g += hLoupe(lx, ly, 62, lo);
+  // 老師發現後提醒學生回書本查證
+  const to = T(9.6);
+  g += hPerson(150, 705, 0.5, C.yellow, to);
+  g += chip(215, 668, 600, '老師發現 → 提醒學生回書本查證', to, C.yellow, 30, 56);
+  g += ctxt(800, 780, '保持清醒，辨識 AI 產出的真偽', { a: 'middle', s: 36, w: 1, f: C.yellow, o: T(10.6) });
+  g += ctxt(800, 828, '不讓演算法取代我們的價值判斷', { a: 'middle', s: 36, w: 1, f: C.yellow, o: T(11.6) });
+  return g;
+}
+
+function s7(u) {
+  let g = head(u, '核心概念③', '兩者分工');
+  const T = (a) => ease(P(u, a, a + 0.8));
+  // 0–6 秒：流程（5.4–6.2 秒淡出，之後換四象限）
+  const fo = 1 - ease(P(u, 5.4, 6.2));
+  if (fo > 0.001) {
+    let f = '';
+    const nodes = [['AI 產出', '產出需要檢視', C.blue], ['知識能動性', '看得出問題', C.blue], ['人類能動性', '做得了主', C.yellow], ['接受／修訂／拒絕', '由人拍板', C.yellow]];
+    nodes.forEach(([t, s, c], i) => {
+      const x = 80 + i * 380, o = stagger(u, 0.4, i, 0.9, 0.8), cx = x + 150;
+      f += `<g opacity="${o}">${box(x, 300, 300, 250, c, 1, C.deep)}</g>`;
+      const pulse = ease(P(u, 1.0 + i * 0.9, 1.5 + i * 0.9)) * (1 - ease(P(u, 1.9 + i * 0.9, 2.4 + i * 0.9)));
+      f += `<g opacity="${(pulse * o).toFixed(3)}"><rect x="${x}" y="300" width="300" height="250" rx="18" fill="rgba(242,193,78,.12)" stroke="${C.yellow}" stroke-width="6"/></g>`;
+      if (i === 0) f += hRobot(cx, 395, 0.7, o);
+      if (i === 1) f += hLens(cx - 20 + 14 * Math.sin(u * 2.2), 385 + 6 * Math.sin(u * 1.5), 42, o);
+      if (i === 2) f += hHelm(cx, 385, 42, 50 * Math.sin(u * 1.6), o, 7);
+      if (i === 3) f += dot(cx - 60, 385, 16, C.green, o) + dot(cx, 385, 16, C.yellow, o) + dot(cx + 60, 385, 16, C.red, o);
+      f += ctxt(cx, 490, t, { a: 'middle', s: 30, w: 1, f: c, o });
+      f += ctxt(cx, 527, s, { a: 'middle', c: 't-body', s: 24, f: C.dim, o });
+      if (i < 3) f += arrow(x + 306, 425, x + 374, 425, C.dim, o, false, o);
+    });
+    f += ctxt(800, 655, '能動性散布並分擔於人與 AI 之間（[1] p.11）', { a: 'middle', s: 40, w: 1, f: C.yellow, o: T(3.4) });
+    g += `<g opacity="${fo.toFixed(3)}">${f}</g>`;
+  }
+  // 整段標示：座標圖為 AI 自擬示意
+  // 流程階段標「（作者觀點）」，4.9–5.5 秒淡出後，座標圖出現時（5.6–6.2 秒）才淡入「AI 自擬示意」，兩者不同時出現
+  g += ctxt(1520, 150, '（作者觀點）', { a: 'end', c: 't-body', s: 24, f: C.dim, o: ease(P(u, 0.2, 1.0)) * (1 - ease(P(u, 4.9, 5.5))) });
+  g += ctxt(1520, 150, 'AI 自擬示意（非框架原圖）', { a: 'end', c: 't-body', s: 24, f: C.dim, o: ease(P(u, 5.6, 6.2)) });
+  // 6.4–11 秒：四象限
+  const ax = ease(P(u, 6.4, 7.2));
+  g += arrow(390, 597, 390, 215, C.dim, ax, false, ax);
+  g += arrow(420, 630, 1472, 630, C.dim, ax, false, ax);
+  g += ctxt(370, 255, '高', { a: 'end', s: 26, f: C.dim, o: ax }) + ctxt(370, 595, '低', { a: 'end', s: 26, f: C.dim, o: ax });
+  g += ctxt(370, 420, '人類能動性', { a: 'end', s: 30, w: 1, f: C.yellow, o: ax }) + hHelm(165, 408, 20, 40 * Math.sin(u * 1.6), ax, 4);
+  g += ctxt(420, 675, '低', { s: 26, f: C.dim, o: ax }) + ctxt(1472, 675, '高', { a: 'end', s: 26, f: C.dim, o: ax });
+  g += ctxt(946, 675, '知識能動性', { a: 'middle', s: 30, w: 1, f: C.blue, o: ax }) + hLens(822, 662, 14, ax);
+  const cells = [
+    [420, 412, '全部外包給 AI', '兩者皆低', C.red, 7.4],
+    [420, 215, '自己拍板，卻被錯誤資訊帶著走', '人類能動性高・知識能動性低', C.orange, 8.3],
+    [952, 412, '看得出錯，卻做不了主', '人類能動性低・知識能動性高', C.orange, 9.2],
+    [952, 215, '人主導的協作', '兩者皆高', C.green, 10.1],
+  ];
+  cells.forEach(([x, y, t, s, c, t0]) => {
+    const o = ease(P(u, t0, t0 + 0.8));
+    g += `<g opacity="${o}">${box(x, y, 520, 185, c, 1, C.deep)}</g>` + ctxt(x + 260, y + 85, t, { a: 'middle', s: 30, w: 1, f: c, o }) + ctxt(x + 260, y + 125, s, { a: 'middle', c: 't-body', s: 24, f: C.dim, o });
+  });
+  g += `<g opacity="${ease(P(u, 10.8, 11.4))}"><rect x="952" y="215" width="520" height="185" rx="18" fill="rgba(127,200,140,.12)" stroke="${C.green}" stroke-width="7"/></g>`;
+  g += ctxt(800, 765, '讓 AI 成為思考的延伸，而非替代（[1] p.11）', { a: 'middle', s: 40, w: 1, f: C.yellow, o: T(11.2) });
+  g += ctxt(800, 815, '仍須主動內化核心技能，防止認知能力萎縮、避免過度依賴', { a: 'middle', s: 28, o: T(12) });
+  return g;
+}
+
+// 對話氣泡：寬度依文字估算（全形 1 倍字寬、半形約 0.55 倍），lines 為已手動斷行的文字
+const bubW = (lines, size) => Math.max(...lines.map((s) => [...s].reduce((a, c) => a + (c.charCodeAt(0) < 256 ? 0.55 : 1), 0))) * size + 56;
+function hBubble(x, y, w, h, op, lines, color, size = 28, textOp = op) {
+  let g = `<g opacity="${op}">${box(x, y, w, h, color, 1, C.deep)}</g>`;
+  const lh = size * 1.35, top = y + (h - lines.length * lh) / 2 + size * 1.05;
+  lines.forEach((s, i) => { g += ctxt(x + 28, top + i * lh, s, { s: size, o: textOp }); });
+  return g;
+}
+
+function s8(u) {
+  let g = head(u, '核心概念④', '互相質疑，彼此修正');
+  const T = (a) => ease(P(u, a, a + 0.8));
+  g += ctxt(1520, 150, '本動畫製作過程的真實紀錄（2026-10-19，經濃縮）', { a: 'end', c: 't-body', s: 24, f: C.dim, o: T(0.4) });
+
+  // 左：縮小的第 7 段座標圖（格子、顏色、座標軸與第 7 段相同；字級維持 22 以上，所以重畫而不是整體縮放）
+  const c = ease(P(u, 0.3, 1.5)), z = lerp(1.08, 1, c);
+  const k2 = ease(P(u, 6.0, 6.6)), flag = k2 * (1 - ease(P(u, 10.2, 10.8)));
+  const x1 = ease(P(u, 8.9, 9.3)), x2 = ease(P(u, 9.2, 9.6));
+  const m = ease(P(u, 11.0, 12.0)), vis = c * (1 - m);
+  g += ctxt(80, 228, '第 7 段的座標圖', { s: 28, w: 1, o: vis });
+  g += chip(330, 192, 370, 'AI 自擬示意（非框架原圖）', vis, C.chalk, 24, 48);
+  const pulse = ease(P(u, 3.5, 4.0)) * (1 - ease(P(u, 5.0, 5.5)));
+  g += `<g opacity="${(pulse * vis).toFixed(3)}"><rect x="330" y="192" width="370" height="48" rx="18" fill="rgba(242,193,78,.2)" stroke="${C.yellow}" stroke-width="5"/></g>`;
+  if (vis > 0.001) {
+    let q = '';
+    q += arrow(205, 620, 205, 270, C.dim, 1, false, 1) + arrow(225, 650, 875, 650, C.dim, 1, false, 1);
+    q += ctxt(195, 305, '高', { a: 'end', s: 24, f: C.dim }) + ctxt(195, 615, '低', { a: 'end', s: 24, f: C.dim });
+    q += ctxt(190, 452, '人類能動性', { a: 'end', s: 24, w: 1, f: C.yellow });
+    q += ctxt(225, 695, '低', { s: 24, f: C.dim }) + ctxt(875, 695, '高', { a: 'end', s: 24, f: C.dim });
+    q += ctxt(550, 695, '知識能動性', { a: 'middle', s: 24, w: 1, f: C.blue });
+    const cells = [
+      [225, 270, ['自己拍板，', '卻被錯誤資訊帶著走'], C.orange],
+      [555, 270, ['人主導的協作'], C.green],
+      [225, 450, ['全部外包給 AI'], C.red],
+      [555, 450, ['看得出錯，', '卻做不了主'], C.orange],
+    ];
+    cells.forEach(([x, y, lines, col]) => {
+      // 收合：各格往圖中心縮小移動（由 m 決定）
+      const cx0 = x + 160, cy0 = y + 85, tx = (550 - cx0) * 0.5 * m, ty = (460 - cy0) * 0.5 * m, sc = 1 - 0.4 * m;
+      q += `<g transform="translate(${(cx0 + tx).toFixed(1)} ${(cy0 + ty).toFixed(1)}) scale(${sc.toFixed(3)}) translate(${-cx0} ${-cy0})">${box(x, y, 320, 170, col, 1, C.deep)}`;
+      lines.forEach((s, j) => { q += ctxt(x + 160, lines.length === 1 ? y + 93 : y + 82 + j * 29, s, { a: 'middle', s: 22, w: 1, f: col }); });
+      q += '</g>';
+    });
+    // ② 質疑右下格：紅框與「？」；③ 指出原圖錯在哪：紅色斜線劃掉，之後淡出
+    q += `<rect x="555" y="450" width="320" height="170" rx="18" fill="rgba(224,92,82,.12)" stroke="${C.red}" stroke-width="7" opacity="${flag.toFixed(3)}"/>`;
+    q += `<g opacity="${flag.toFixed(3)}"><circle cx="867" cy="458" r="24" fill="${C.red}"/>${ctxt(867, 470, '？', { a: 'middle', s: 32, w: 1, f: C.deep })}</g>`;
+    q += `<g opacity="${(1 - ease(P(u, 10.2, 10.8))).toFixed(3)}" stroke="${C.red}" stroke-width="9" stroke-linecap="round"><line x1="575" y1="462" x2="${lerp(575, 855, x1).toFixed(1)}" y2="${lerp(462, 608, x1).toFixed(1)}"/><line x1="855" y1="462" x2="${lerp(855, 575, x2).toFixed(1)}" y2="${lerp(462, 608, x2).toFixed(1)}"/></g>`;
+    g += `<g transform="translate(550 460) scale(${z.toFixed(4)}) translate(-550 -460)" opacity="${vis.toFixed(3)}">${q}</g>`;
+  }
+  // ④ 修正版：依 [1] p.10–11 文字整理（非原圖）
+  const a1 = ease(P(u, 11.6, 12.4)), a2 = ease(P(u, 12.0, 12.8)), a3 = ease(P(u, 12.4, 13.2)), a4 = ease(P(u, 13.0, 13.8));
+  g += ctxt(80, 228, '修正後的關係', { s: 28, w: 1, f: C.green, o: a1 });
+  g += `<g opacity="${a1}">${box(225, 270, 650, 130, C.yellow, 1, C.deep)}</g>` + hHelm(305, 335, 30, 30 * Math.sin(u * 1.6), a1, 6);
+  g += ctxt(385, 322, '人類能動性', { s: 30, w: 1, f: C.yellow, o: a1 }) + ctxt(385, 366, '自己作主，掌握決策', { s: 26, o: a1 });
+  g += `<g opacity="${a2}">${box(225, 510, 650, 130, C.blue, 1, C.deep)}</g>` + hLens(305 + 6 * Math.sin(u * 2.2), 575, 30, a2);
+  g += ctxt(385, 562, '知識能動性', { s: 30, w: 1, f: C.blue, o: a2 }) + ctxt(385, 606, '辨別真偽，將知識用於行動', { s: 26, o: a2 });
+  g += arrow(400, 410, 400, 500, C.green, a3, true, a3) + ctxt(430, 466, '辨真偽與作決定，彼此牽動', { s: 26, w: 1, f: C.green, o: a3 });
+  g += chip(225, 668, 650, '修正版：依 [1] p.10–11 文字整理，非原圖', a4, C.green, 26, 48);
+
+  // 右：對話（人＝黃、AI＝藍）；較舊的回合在下一回合出現時變淡
+  const dim1 = 1 - 0.45 * T(6.0), dim2 = 1 - 0.45 * T(8.5);
+  const bub = (y, lines, a, color, size, ai, k = 1) => {
+    const h = lines.length * size * 1.35 + 30, op = T(a) * k;
+    return hBubble(1020, y, bubW(lines, size), h, op, lines, color, size) + (ai ? hRobot(970, y + h / 2 + 8, 0.4, op) : hPerson(970, y + h / 2 + 5, 0.4, C.yellow, op));
+  };
+  g += bub(205, ['這張圖是框架原文，', '還是 AI 自己的理解？'], 2.0, C.yellow, 26, false, dim1);
+  g += bub(320, ['是 AI 自擬；', '[1] 只並列兩種能動性，沒有座標圖'], 3.5, C.blue, 26, true, dim1);
+  g += bub(445, ['能辨真偽，照理就能調整、決策', '——右下角說得通嗎？'], 6.0, C.yellow, 26, false, dim2);
+  g += bub(560, ['原圖把『能辨錯』當成', '完整的知識能動性，', '但 [1] p.10：知識能動性', '＝知識轉化行動的能力'], 8.5, C.green, 24, true);
+  g += ctxt(800, 805, '人質疑 AI、AI 修正：相互評估、批判與改進（[1] p.25）', { a: 'middle', s: 34, w: 1, f: C.yellow, o: T(13.5) });
+  return g;
+}
+
+function s9(u) {
   let g = head(u, '作法一', '用前：先畫邊界') + hTrack(u, T_TRACK, 0);
   const k = ease(P(u, 0.8, 2.2));
   g += `<line x1="560" y1="320" x2="560" y2="${lerp(320, 780, k)}" stroke="${C.yellow}" stroke-width="5" stroke-dasharray="14 10"/>`;
@@ -278,7 +520,7 @@ function s6(u) {
   return g;
 }
 
-function s7(u) {
+function s10(u) {
   let g = head(u, '作法二', '用中：AI 只給初稿') + hTrack(u, T_TRACK, 1);
   const o1 = ease(P(u, 0.5, 1.3)), o2 = ease(P(u, 2, 2.8));
   g += hRobot(190, 525, 1.1, o1);
@@ -295,7 +537,7 @@ function s7(u) {
   return g;
 }
 
-function s8(u) {
+function s11(u) {
   let g = head(u, '作法三', '用後：真的學會了嗎？') + hTrack(u, T_TRACK, 2);
   const h1 = 360 * ease(P(u, 0.6, 2)), h2 = 140 * ease(P(u, 1.2, 2.6));
   g += `<rect x="230" y="${700 - h1}" width="140" height="${h1}" rx="10" fill="${C.green}" opacity=".8"/>`;
@@ -314,20 +556,151 @@ function s8(u) {
   return g;
 }
 
-function s9(u) {
-  let g = head(u, '結語', '例子與結語');
-  const steps = [['定目標', '學習目標＋錯誤類型'], ['AI 出題', '依條件生成'], ['逐題驗算', '標出修改處'], ['學生找錯', '留一題 AI 錯題']];
-  steps.forEach(([t, s], i) => {
-    const o = stagger(u, 0.5, i, 0.8), x = 80 + i * 375;
-    g += ccard(x, 230, 330, 150, o, t, s, i === 1 ? C.blue : C.chalk, 34, 22);
-    if (i < 3) g += arrow(x + 334, 305, x + 371, 305, C.dim, stagger(u, 0.5, i + 1, 0.8));
+// ===== 北園國小獨角仙復育案例（移植自 ai-era-education 的 sBeetle）=====
+// 照片放在舞台後方的固定 <svg>：舞台每格都會重建 innerHTML，照片若放在裡面會閃爍。
+// 場景只輸出一個 #phMarker（記錄該格照片的位置與透明度），由 MutationObserver 只更新固定圖層的屬性，畫面仍只由 t 決定。
+(() => {
+  const stageEl = document.getElementById('stage');
+  if (!stageEl) return;
+  const NS = 'http://www.w3.org/2000/svg';
+  const hrefs = { microbit: 'assets/beetle-microbit-sensor.jpg', larva: 'assets/beetle-larva-observe.jpg' };
+  const layer = document.createElementNS(NS, 'svg');
+  layer.setAttribute('viewBox', '0 0 1600 900');
+  layer.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  layer.setAttribute('aria-hidden', 'true');
+  layer.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;z-index:0;pointer-events:none';
+  const board = stageEl.parentElement;
+  board.style.position = 'relative';
+  stageEl.style.position = 'relative';
+  stageEl.style.zIndex = '1';
+  board.insertBefore(layer, stageEl);
+  const imgs = {};
+  for (const [k, h] of Object.entries(hrefs)) {
+    const im = document.createElementNS(NS, 'image');
+    im.setAttribute('href', h);
+    im.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+    im.setAttribute('opacity', '0');
+    layer.appendChild(im);
+    imgs[k] = im;
+  }
+  new MutationObserver(() => {
+    const m = stageEl.querySelector('#phMarker');
+    const list = m ? JSON.parse(m.getAttribute('data-ph')) : [];
+    const used = new Set();
+    for (const p of list) {
+      const im = imgs[p.k]; used.add(p.k);
+      im.setAttribute('x', p.x); im.setAttribute('y', p.y); im.setAttribute('width', p.w); im.setAttribute('height', p.h); im.setAttribute('opacity', p.o);
+    }
+    for (const k of Object.keys(imgs)) if (!used.has(k)) imgs[k].setAttribute('opacity', '0');
+  }).observe(stageEl, { childList: true });
+  // 照片也解碼完成才算 ready（範本稍後才設定 window.ready，這裡攔截並附加照片）
+  let rdy = null;
+  Object.defineProperty(window, 'ready', {
+    configurable: true,
+    get() { return rdy; },
+    set(v) { rdy = Promise.all([v].concat(Object.values(hrefs).map((h) => { const i = new Image(); i.src = h; return (i.decode ? i.decode() : Promise.resolve()).catch(() => null); }))); },
   });
-  g += txt(80, 425, '（作者自擬例子：用 AI 出數學練習題）', { c: 't-body', s: 22, f: C.dim, o: ease(P(u, 1, 1.8)) });
-  g += txt(800, 490, '（作者觀點）', { a: 'middle', c: 't-body', s: 22, f: C.dim, o: ease(P(u, 5, 6)) });
-  g += txt(800, 560, '判斷、責任與陪伴，', { a: 'middle', s: 56, w: 1, f: C.yellow, o: ease(P(u, 5, 6)) });
-  g += txt(800, 640, '仍由老師來做。', { a: 'middle', s: 56, w: 1, f: C.yellow, o: ease(P(u, 6, 7)) });
-  g += txt(800, 760, '能動性不是拒絕 AI，而是每個決定都說得出理由、也收得回來', { a: 'middle', s: 30, o: ease(P(u, 8, 9)) });
-  return g;
+})();
+
+function s12(u) {
+  let g = head(u, '案例', '北園國小獨角仙復育：不要只秀成品'), b = '';
+  const ph = [];
+  const S = [['飼育遊戲', '先玩，留下困惑'], ['研究問題', 'AI 協助整理與查證'], ['micro:bit', '轉成感測設計'], ['復育日誌', '持續觀察與修正']];
+  S.forEach((s, i) => {
+    const o = ease(P(u, 0.6 + i * 0.5, 1.2 + i * 0.5)), x = 110 + i * 360;
+    g += `<g transform="translate(${x} 172)" opacity="${o}">${box(0, 0, 300, 96, i === 1 ? C.orange : C.chalk, 1, 'rgba(239,233,216,.05)')}` +
+      ctxt(24, 42, s[0], { s: 30, w: 1, f: C.yellow }) + ctxt(24, 78, s[1], { c: 't-body', s: 22, f: C.dim }) + '</g>';
+    if (i < 3) g += arrow(x + 305, 220, x + 355, 220, C.dim, ease(P(u, 1 + i * 0.5, 1.4 + i * 0.5)));
+  });
+  const CC = [
+    { x: 110, at: 3, name: '低證據', col: 'rgba(169,179,166,.9)', d1: '只有遊戲分數或成品', d2: '看得到結果，看不到思考' },
+    { x: 600, at: 5.5, name: '中證據', col: C.blue, d1: '學習單、AI 對話、重試紀錄', d2: '看得到探究歷程' },
+    { x: 1090, at: 8, name: '高證據', col: C.green, d1: '原始困惑、查證、感測數據、修正理由', d2: '看得到學生如何判斷與修正' }];
+  const PY = 345, PW = 400, PH = 250;
+  CC.forEach((c, i) => {
+    const o = ease(P(u, c.at, c.at + 0.7));
+    g += `<g opacity="${o}"><rect x="${c.x}" y="292" width="120" height="38" rx="19" fill="${c.col}"/>` +
+      ctxt(c.x + 60, 319, c.name, { a: 'middle', c: 't-body', s: 22, w: 1, f: C.deep }) +
+      ctxt(c.x, 636, c.d1, { c: 't-body', s: 22 }) + ctxt(c.x, 668, c.d2, { c: 't-body', s: 22, f: C.dim }) + '</g>';
+    b += `<rect x="${c.x}" y="${PY}" width="${PW}" height="${PH}" rx="6" fill="none" stroke="${c.col}" stroke-width="4" opacity="${o}"/>`;
+  });
+  // 低證據：圖解（飼育遊戲畫面＋過關與分數），再蓋上「誰在思考？」——不使用學生照片
+  {
+    const x = CC[0].x, y = PY, o = ease(P(u, 3, 3.7));
+    const prog = ease(P(u, 3.5, 4.3)), s = ease(P(u, 4.2, 4.7)), q = ease(P(u, 4.6, 5.2));
+    const bob = Math.sin(u * 4) * 3, step = Math.sin(u * 8) * 4;
+    g += `<g opacity="${o}">
+      <rect x="${x}" y="${y}" width="${PW}" height="${PH}" rx="6" fill="rgba(169,179,166,.08)"/>
+      <rect x="${x + 40}" y="${y + 16}" width="320" height="192" rx="10" fill="#13211a" stroke="${C.chalk}" stroke-width="4"/>
+      <rect x="${x + 52}" y="${y + 28}" width="296" height="168" fill="#2e4a3c"/>
+      <rect x="${x + 52}" y="${y + 140}" width="296" height="56" fill="#5a3d2a"/>
+      <path d="M${x + 52} ${y + 140} q30 -10 60 0 t60 0 t60 0 t60 0 t56 0" fill="none" stroke="#7a5638" stroke-width="4"/>
+      <path d="M${x + 80} ${y + 140} v-34 m0 10 q-12 -8 -16 -20 m16 30 q12 -10 18 -22" fill="none" stroke="${C.green}" stroke-width="3"/>
+      <path d="M${x + 316} ${y + 140} v-28 m0 8 q-10 -6 -14 -16 m14 24 q10 -8 14 -18" fill="none" stroke="${C.green}" stroke-width="3"/>
+      <g transform="translate(${x + 200} ${y + 130 + bob})">
+        <path d="M-26 ${10 + step} l-10 12 M0 14 l0 14 M26 ${10 - step} l10 12" stroke="#c98a4b" stroke-width="3"/>
+        <ellipse cx="0" cy="0" rx="34" ry="20" fill="#3b2416" stroke="#c98a4b" stroke-width="3"/>
+        <line x1="0" y1="-18" x2="0" y2="18" stroke="#c98a4b" stroke-width="2"/>
+        <circle cx="38" cy="-4" r="10" fill="#3b2416" stroke="#c98a4b" stroke-width="3"/>
+        <path d="M44 -10 q18 -6 20 -26 M44 -10 l10 -6" fill="none" stroke="#c98a4b" stroke-width="4" stroke-linecap="round"/>
+      </g>` + ctxt(x + 60, y + 56, '飼育進度', { c: 't-body', s: 22, f: C.chalk }) + `
+      <rect x="${x + 160}" y="${y + 41}" width="100" height="12" rx="6" fill="rgba(239,233,216,.2)"/>
+      <rect x="${x + 160}" y="${y + 41}" width="${100 * prog}" height="12" rx="6" fill="${C.green}"/>
+      <rect x="${x + 180}" y="${y + 208}" width="40" height="16" fill="${C.dim}"/>
+      <rect x="${x + 140}" y="${y + 224}" width="120" height="8" rx="4" fill="${C.dim}"/></g>`;
+    g += `<g opacity="${s}"><rect x="${x + 266}" y="${y + 34}" width="78" height="34" rx="8" fill="var(--board)" stroke="${C.yellow}" stroke-width="2.5"/>` +
+      ctxt(x + 305, y + 59, '85 分', { a: 'middle', c: 't-body', s: 22, w: 1, f: C.yellow }) +
+      ctxt(x + 200, y + 106, '過關！★★★', { a: 'middle', s: 30, w: 1, f: C.yellow }) + '</g>';
+    b += `<g opacity="${q}"><rect x="${x}" y="${y + PH - 74}" width="${PW}" height="74" fill="rgba(26,43,35,.88)"/>` +
+      ctxt(x + PW / 2, y + PH - 26, '？ 誰在思考', { a: 'middle', s: 34, w: 1 }) + '</g>';
+  }
+  // 中證據：圖解（學習單＋AI 對話＋第 2 次嘗試）
+  {
+    const x = CC[1].x, o = ease(P(u, 5.5, 6.2));
+    g += `<g opacity="${o}"><rect x="${x}" y="${PY}" width="${PW}" height="${PH}" rx="6" fill="rgba(127,182,217,.08)"/>
+      <path d="M${x + 20} ${PY + 22} H${x + 120} L${x + 140} ${PY + 42} V${PY + 228} H${x + 20} Z" fill="var(--board)" stroke="${C.chalk}" stroke-width="3"/>` +
+      ctxt(x + 30, PY + 58, '學習單', { c: 't-body', s: 22, w: 1, f: C.yellow }) + '</g>';
+    for (let k = 0; k < 6; k++) {
+      const w = ease(P(u, 6 + k * 0.25, 6.4 + k * 0.25));
+      const len = [90, 70, 96, 60, 84, 50][k];
+      g += `<path d="M${x + 32} ${PY + 90 + k * 22} q8 -6 16 0 t16 0 t16 0 t16 0 t16 0 t16 0" fill="none" stroke="${C.dim}" stroke-width="2.5" stroke-dasharray="${len * w} 200" opacity="${o}"/>`;
+    }
+    const BB = [['幼蟲為什麼都不動？', C.green, 1], ['可能和溫度、濕度有關', C.orange, 0], ['我要查證後再試一次', C.green, 1]];
+    BB.forEach((m, k) => {
+      const bo = ease(P(u, 6.3 + k * 0.6, 6.8 + k * 0.6)), by = PY + 24 + k * 56, bx = m[2] ? x + 156 : x + 150;
+      g += `<g opacity="${bo}"><rect x="${bx}" y="${by}" width="240" height="46" rx="12" fill="var(--board)" stroke="${m[1]}" stroke-width="3"/>` +
+        ctxt(bx + 10, by + 32, m[0], { c: 't-body', s: 22 }) + '</g>';
+    });
+    const r = ease(P(u, 7.6, 8.1));
+    g += `<g opacity="${r}"><rect x="${x + 214}" y="${PY + 200}" width="176" height="38" rx="19" fill="${C.blue}"/>` +
+      ctxt(x + 302, PY + 227, '↻ 第 2 次嘗試', { a: 'middle', c: 't-body', s: 22, w: 1, f: C.deep }) + '</g>';
+  }
+  // 高證據：真實照片（micro:bit 感測、幼蟲觀察）＋感測折線＋修正理由便利貼
+  {
+    const x = CC[2].x, o = ease(P(u, 8, 8.7)), fin = P(u, 0, 0.35);
+    ph.push({ k: 'microbit', x, y: PY, w: PW / 2, h: PH, o: +(o * fin).toFixed(3) });
+    ph.push({ k: 'larva', x: x + PW / 2, y: PY, w: PW / 2, h: PH, o: +(o * fin).toFixed(3) });
+    b += `<line x1="${x + PW / 2}" y1="${PY}" x2="${x + PW / 2}" y2="${PY + PH}" stroke="${C.deep}" stroke-width="4" opacity="${o}"/>`;
+    const co = ease(P(u, 8.8, 9.2)), dw = ease(P(u, 9, 10.6));
+    const pts = [[0, 52], [25, 48], [50, 40], [75, 30], [100, 34], [125, 22], [150, 20], [170, 18]].map((p) => `${x + 12 + p[0]},${PY + 156 + p[1]}`).join(' ');
+    b += `<g opacity="${co}"><rect x="${x + 8}" y="${PY + 146}" width="184" height="98" rx="8" fill="rgba(26,43,35,.88)"/>` +
+      ctxt(x + 18, PY + 172, '濕度 %', { c: 't-body', s: 22, f: C.green }) +
+      `<polyline points="${pts}" fill="none" stroke="${C.green}" stroke-width="4" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="${1 - dw}" stroke-linejoin="round"/></g>`;
+    const n = P(u, 10.3, 10.9);
+    b += `<g transform="translate(${x + PW / 2 + 12} ${PY + 146}) rotate(-4) scale(${lerp(1.3, 1, ease(n))})" opacity="${ease(n)}">
+      <rect width="182" height="92" rx="4" fill="#f4dd8a"/>` +
+      ctxt(12, 38, '太乾 → 噴水', { c: 't-body', s: 22, w: 1, f: '#3a2f12' }) + ctxt(12, 74, '再觀察 3 天', { c: 't-body', s: 22, f: '#3a2f12' }) + '</g>';
+  }
+  // 證據強度條與指標
+  const bo = ease(P(u, 3, 3.6));
+  g += `<defs><linearGradient id="evg" x1="0" x2="1"><stop offset="0" stop-color="#a9b3a6" stop-opacity=".5"/><stop offset=".5" stop-color="#7fb6d9"/><stop offset="1" stop-color="#8fd18a"/></linearGradient></defs>
+    <g opacity="${bo}"><rect x="110" y="700" width="1380" height="14" rx="7" fill="url(#evg)"/>` +
+    ctxt(110, 746, '證據弱', { c: 't-body', s: 22, f: C.dim }) + ctxt(1490, 746, '證據強', { a: 'end', c: 't-body', s: 22, f: C.dim }) + '</g>';
+  const px = u < 5.5 ? 310 : (u < 8 ? lerp(310, 800, ease(P(u, 5.5, 6.2))) : lerp(800, 1290, ease(P(u, 8, 8.7))));
+  g += `<path d="M${px} 696 l-14 -22 h28 Z" fill="${C.yellow}" opacity="${bo}"/>`;
+  g += ctxt(800, 800, '證據越完整，越能說「是學生學會了」', { a: 'middle', s: 38, f: C.yellow, o: ease(P(u, 11.8, 12.6)) });
+  g += ctxt(80, 860, '案例作者：白宗恩（北園國小）；高證據照片為北園課堂紀錄；為校本案例整理，不推論 AI 造成學習成效', { c: 't-body', s: 22, f: C.dim, o: ease(P(u, 2, 2.6)) });
+  return g + b + `<g id="phMarker" data-ph='${JSON.stringify(ph)}'/>`;
 }
 
 const SEGS = [
@@ -339,16 +712,22 @@ const SEGS = [
     cap: "以「以人為中心」為核心，含<b>四個向度</b>，每個向度分<b>取得理解、深化應用、創造轉型</b>三層級。" },
   { len: 11, grp: "教師 AI 素養", name: "不必全都到頂", scene: s4,
     cap: "各向度的發展層級<b>未必相同</b>，也<b>不是每位教師都要達到創造轉型</b>層級。" },
-  { len: 14, grp: "能動性", name: "兩種能動性", scene: s5,
-    cap: "<b>人類能動性</b>：決策主導權在人；<b>知識能動性</b>：能辨識 AI 產出的真偽，不讓演算法取代價值判斷。" },
-  { len: 14, grp: "能動性", name: "用前：先畫邊界", scene: s6,
+  { len: 14, grp: "能動性", name: "人類能動性：掌舵", scene: s5,
+    cap: "<b>人類能動性</b>：確保自主的行動能力，與 AI 協作時，<b>決策主導權始終在人</b>。" },
+  { len: 14, grp: "能動性", name: "知識能動性：放大鏡", scene: s6,
+    cap: "<b>知識能動性</b>：保持清醒，<b>能辨識 AI 產出的真偽</b>；北園實例：AI 列出不存在的書，老師要提醒學生查證。" },
+  { len: 14, grp: "能動性", name: "兩者分工", scene: s7,
+    cap: "知識能動性讓人<b>看得出問題</b>，人類能動性讓人<b>做得了主</b>；AI 是思考的延伸，而非替代。" },
+  { len: 16, grp: "能動性", name: "互相質疑，彼此修正", scene: s8,
+    cap: "人質疑 AI 自擬的座標圖，AI 回到原文定義<b>修正</b>：辨真偽與作決定，<b>彼此牽動</b>。" },
+  { len: 14, grp: "能動性", name: "用前：先畫邊界", scene: s9,
     cap: "用前：教師劃定<b>AI 應用的邊界</b>，選對工具、訂好公約，必要時<b>暫停</b> AI，讓學生回到自身推理。" },
-  { len: 14, grp: "能動性", name: "用中：AI 只給初稿", scene: s7,
+  { len: 14, grp: "能動性", name: "用中：AI 只給初稿", scene: s10,
     cap: "用中：AI 產出只是<b>初稿</b>，經事實查核與倫理審查後決定<b>接受、修訂或拒絕</b>；最終結果由使用者負責。" },
-  { len: 14, grp: "能動性", name: "用後：真的學會了嗎？", scene: s8,
+  { len: 14, grp: "能動性", name: "用後：真的學會了嗎？", scene: s11,
     cap: "用後：任務表現提升<b>不代表知識內化</b>，要提防認知卸載與虛假精熟，可改用<b>過程導向評量</b>。" },
-  { len: 13, grp: "結語", name: "例子與結語", scene: s9,
-    cap: "例子：定目標 → AI 出題 → 逐題驗算 → 學生找錯。<b>判斷、責任與陪伴，仍由老師來做。</b>" },
+  { len: 15, grp: "案例", name: "北園獨角仙：不要只秀成品", scene: s12,
+    cap: "不只秀成品：從遊戲困惑到 micro:bit 與復育日誌，<b>證據越完整越能說是學生學會</b>。" },
 ];
 
 // ===================== 工具（通常不用改）=====================
