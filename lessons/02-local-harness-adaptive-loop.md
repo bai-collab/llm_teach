@@ -113,6 +113,8 @@ sequenceDiagram
 
 ## 7. 計畫書拓樸圖規則（AGENTS.md 全域設定，可當課堂作業規範）
 
+> 先看動畫：[為什麼要先寫計畫書？](https://bai-collab.github.io/llm_teach/animations/why-plan-first/)（130 秒）——注意力是有限預算、長任務為什麼會走偏，以及計畫書怎麼把目的與階段留在上下文窗口外面。
+
 每份計畫書要有 Mermaid 執行拓樸圖，每個節點寫：**節點 ID／功能／使用 agent／狀態（已執行・未執行・有問題）**；每完成一節點立即回寫並做 drift review；中斷後從第一個非「已執行」節點續接；不保存私有 chain-of-thought。
 
 ## 8. 課堂提問

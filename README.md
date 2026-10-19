@@ -61,10 +61,11 @@
 | 步驟 | 內容 | 形式 |
 |---|---|---|
 | 1 | [本工作區的 Harness](https://bai-collab.github.io/llm_teach/animations/harness-tour/)：十段規則總覽 | 動畫 110 秒 |
-| 2 | [02 本機 Harness](lessons/02-local-harness-adaptive-loop.md)：Adaptive Loop、Route Plan、分工、驗證預算 | 講義 |
-| 3 | [03 eduHarness Skill](lessons/03-eduharness-skills-workflow.md)：Skill 套件與用途 → 工作流程 | 講義 |
-| 4 | [04 eduHarness_Nooa](lessons/04-eduharness-nooa-cloud-registry-v3.md)：雲端版與 Registry v3 | 講義 |
-| 5 | [Harness²：改的不是模型，是外面那層](https://bai-collab.github.io/llm_teach/animations/harness2-eval/)：借設計評估與一次 A/B 小實驗 | 動畫 144 秒 |
+| 2 | [為什麼要先寫計畫書？](https://bai-collab.github.io/llm_teach/animations/why-plan-first/)：注意力、上下文與長任務走偏 | 動畫 130 秒 |
+| 3 | [02 本機 Harness](lessons/02-local-harness-adaptive-loop.md)：Adaptive Loop、Route Plan、分工、驗證預算 | 講義 |
+| 4 | [03 eduHarness Skill](lessons/03-eduharness-skills-workflow.md)：Skill 套件與用途 → 工作流程 | 講義 |
+| 5 | [04 eduHarness_Nooa](lessons/04-eduharness-nooa-cloud-registry-v3.md)：雲端版與 Registry v3 | 講義 |
+| 6 | [Harness²：改的不是模型，是外面那層](https://bai-collab.github.io/llm_teach/animations/harness2-eval/)：借設計評估與一次 A/B 小實驗 | 動畫 144 秒 |
 
 **課堂提問**：你的備課流程中，哪一步最需要「老師核准」才能往下走？
 
