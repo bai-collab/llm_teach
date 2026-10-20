@@ -66,6 +66,7 @@
 | 4 | [03 eduHarness Skill](lessons/03-eduharness-skills-workflow.md)：Skill 套件與用途 → 工作流程 | 講義 |
 | 5 | [04 eduHarness_Nooa](lessons/04-eduharness-nooa-cloud-registry-v3.md)：雲端版與 Registry v3 | 講義 |
 | 6 | [Harness²：改的不是模型，是外面那層](https://bai-collab.github.io/llm_teach/animations/harness2-eval/)：借設計評估與一次 A/B 小實驗 | 動畫 144 秒 |
+| 7 | [Colab 模型實驗室＋Harness² 架構](https://bai-collab.github.io/llm_teach/animations/colab-harness2-arch/)：本機遙控雲端、批次索引、A100 對 Opus 評測結果 | 動畫 150 秒 |
 
 **課堂提問**：你的備課流程中，哪一步最需要「老師核准」才能往下走？
 
