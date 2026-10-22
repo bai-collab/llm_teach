@@ -1,6 +1,6 @@
 # 01｜什麼是 Harness？（模型外圍的執行／治理層）
 
-> 🧭 **單元二・第 1 步**｜上一步：[動畫：闖關教材製作](https://bai-collab.github.io/llm_teach/animations/quest-material/)｜下一步：[動畫：為什麼要換家審查](https://bai-collab.github.io/llm_teach/animations/review-landscape/)｜[課程地圖](../README.md)｜[網站版](https://bai-collab.github.io/llm_teach/)
+> 🧭 **單元二・第 3 步**｜上一步：[動畫：下一個字怎麼選出來？](https://bai-collab.github.io/llm_teach/animations/token-selection-vector/)｜下一步：[動畫：為什麼要換家審查](https://bai-collab.github.io/llm_teach/animations/review-landscape/)｜[課程地圖](../README.md)｜[網站版](https://bai-collab.github.io/llm_teach/)
 
 > **一句話**：LLM 負責理解、生成、提出候選行動；**Harness 是模型外圍的執行、控制與證據層**——決定模型看到什麼、能用哪些工具、哪些動作允許執行、狀態怎麼保存、結果怎麼驗證。
 >

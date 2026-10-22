@@ -12,8 +12,8 @@
   動畫：老師當導演 → 教師儀表板 → 闖關教材（2D＋3D）
   │
   ▼
-[單元二] 為什麼要這樣管 AI｜觀念｜約 30 分鐘
-  講義 01 什麼是 Harness → 動畫：為什麼要換家審查（3D）→ 講義 07 Agent 架構
+[單元二] 為什麼要這樣管 AI｜觀念｜約 35 分鐘
+  動畫：電腦怎麼懂字 → 下一個字怎麼選 → 講義 01 什麼是 Harness → 動畫：為什麼要換家審查（3D）→ 講義 07 Agent 架構
   │
   ▼
 [單元三] 本工作區怎麼做｜實務｜約 40 分鐘
@@ -44,13 +44,15 @@
 
 ### 單元二　為什麼要這樣管 AI（觀念）
 
-**學完能說出**：模型外面為什麼需要一層 Harness；為什麼同家族做的要交給不同家族審查。
+**學完能說出**：模型怎麼一個字一個字選出回答；模型外面為什麼需要一層 Harness；為什麼同家族做的要交給不同家族審查。
 
 | 步驟 | 內容 | 形式 |
 |---|---|---|
-| 1 | [01 什麼是 Harness](lessons/01-what-is-a-harness.md)：上下文、工具、護欄、狀態、驗證 | 講義 |
-| 2 | [為什麼要換家審查](https://bai-collab.github.io/llm_teach/animations/review-landscape/)：答案地形、局部解、盲點 | 動畫 100 秒（3D） |
-| 3 | [07 AI Agent 架構 V4.1](lessons/07-ai-agent-architecture-v4-1.md)：Harness → Agent → 核心循環 → Hooks | 講義（附互動圖） |
+| 1 | [電腦怎麼慢慢「懂」字？](https://bai-collab.github.io/llm_teach/animations/meaning-and-neural-nets-history/)：從關鍵字規則、開關式神經元到向量、注意力與人類回饋 | 動畫 139 秒 |
+| 2 | [下一個字怎麼選出來？](https://bai-collab.github.io/llm_teach/animations/token-selection-vector/)：字是方向、整句變箭頭、溫度與 top-p | 動畫 128 秒 |
+| 3 | [01 什麼是 Harness](lessons/01-what-is-a-harness.md)：上下文、工具、護欄、狀態、驗證 | 講義 |
+| 4 | [為什麼要換家審查](https://bai-collab.github.io/llm_teach/animations/review-landscape/)：答案地形、局部解、盲點 | 動畫 100 秒（3D） |
+| 5 | [07 AI Agent 架構 V4.1](lessons/07-ai-agent-architecture-v4-1.md)：Harness → Agent → 核心循環 → Hooks | 講義（附互動圖） |
 
 **課堂提問**：你自己檢查自己的作業時，最容易漏掉什麼？換別人看會不同嗎？
 
@@ -105,6 +107,8 @@
 
 | 我要講… | 看這篇 | 關鍵字 |
 |---|---|---|
+| LLM 怎麼選出下一個字？ | [下一個字怎麼選出來？](https://bai-collab.github.io/llm_teach/animations/token-selection-vector/)（動畫） | 字向量、比對、機率、溫度、top-p |
+| 電腦理解文字的歷史：從規則到神經網路 | [電腦怎麼慢慢「懂」字？](https://bai-collab.github.io/llm_teach/animations/meaning-and-neural-nets-history/)（動畫） | 感知器、XOR、反向傳播、LSTM、word2vec、注意力、人類回饋 |
 | Harness 是什麼？跟模型差在哪？ | [01 什麼是 Harness](lessons/01-what-is-a-harness.md) | context、tools、guardrails、state、verification |
 | Agent 完整架構：Harness／Agent／核心循環三層 | [07 AI Agent 架構 V4.1](lessons/07-ai-agent-architecture-v4-1.md) §1–§4 | Orchestration、Planner、Think→Act→Observe |
 | Skill、Tool、MCP 差在哪 | [07](lessons/07-ai-agent-architecture-v4-1.md) §5 | Skill 編排 Tool、MCP 是連接方式 |

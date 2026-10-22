@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="zh-Hant">
+<script>if(/[?&]embed=1\b/.test(location.search))document.documentElement.classList.add('embed')</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>下一個字怎麼選出來？</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;700&display=swap">
+<style>
+/* repo 轉教學動畫網頁｜通用骨架（黑板舞台）。新動畫只改「設定區」與「場景區」。 */
+:root{
+  --board:#23392f; --board-deep:#1a2b23; --frame:#6e4c31;
+  --chalk:#efe9d8; --chalk-dim:#a9b3a6;
+  --yellow:#f2c14e; --orange:#e8875b; --blue:#7fb6d9; --green:#8fd18a; --red:#e66a5c;
+  --font-chalk:"LXGW WenKai TC","Kaiti TC","DFKai-SB","BiauKai",serif;
+  --font-body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;
+  color-scheme:dark;
+}
+html,body{background:var(--board-deep);color:var(--chalk)}
+body{margin:0;font-family:var(--font-body)}
+/* ===== 播放器版面公版（研習平台頁同一套規則）=====
+   1) 播放區 .player（標題列＋舞台＋字幕＋控制列）剛好佔一個視窗高；章節、延伸閱讀、出處在下方，往下捲才看到。
+   2) 舞台吃「扣掉標題列、字幕、控制列後的剩餘空間」：.stage-area 是容器查詢容器，.board 用 cqw／cqh 算出 16:9 最大尺寸並置中；
+      木框寬度只用 --bw 變數計入（SVG 本身維持 16:9），不得再用固定像素去扣高度。
+   3) 進度條列可收合（#toggleSeek），預設收起；收起時舞台自動變大。字幕至少預留兩行，段落切換時舞台不跳動。    4) 標註工具（手寫筆跡＋文字，.annoLayer 掛在 .board 內）：「標註工具 ▸／▾」（#toggleInk）收合一列工具列，預設收起；標註以段落為單位、只存在記憶體；?embed=1 不啟用。 */
+.wrap{max-width:1600px;margin:0 auto;padding-inline:16px;padding-bottom:28px;display:flex;flex-direction:column;gap:14px}
+.player{box-sizing:border-box;height:100vh;height:100dvh;padding-block:12px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.player>header,.player>.controls{flex:none}
+.theater{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px;align-items:center}
+.theater .caption{align-self:stretch;flex:none}
+.stage-area{flex:1 1 0;min-height:0;align-self:stretch;display:flex;align-items:center;justify-content:center;container-type:size}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 16px}
+h1{font-family:var(--font-chalk);font-weight:700;font-size:clamp(1.3rem,2.6vw,1.9rem);margin:0}
+.sub{color:var(--chalk-dim);font-size:.95rem;margin:0}
+.board{--bw:14px;box-sizing:border-box;border:var(--bw) solid var(--frame);border-radius:6px;background:var(--board);box-shadow:inset 0 0 60px rgba(0,0,0,.45);flex:none;max-width:100%;
+  width:100%;width:min(100cqw, calc((100cqh - 2 * var(--bw)) * 16 / 9 + 2 * var(--bw)))}
+/* 全螢幕：theater 本身就是全螢幕元素，沿用同一套規則（舞台吃剩餘空間、字幕預留兩行；字幕字級與行高用 vh／vw） */
+.theater:fullscreen{background:var(--board-deep);gap:1.5vh;padding:2vh 2vw;box-sizing:border-box}
+.theater:fullscreen .caption{text-align:center;font-size:min(2.4vw,3.2vh);line-height:1.4;min-height:2.8em;max-width:100%}
+@media (max-width:640px){.board{--bw:8px}}
+/* 內嵌（?embed=1）：只留舞台與字幕，尺寸全用 vh，播放由外層 postMessage 控制（版面公版不套用） */
+html.embed body{padding:0;overflow:hidden}
+html.embed header,html.embed .controls,html.embed .chapters,html.embed .works,html.embed .note{display:none}
+html.embed .wrap{max-width:none;gap:0;padding:0}
+html.embed .player,html.embed .stage-area{display:contents}
+html.embed .stage-area{container-type:normal}
+html.embed .theater{flex:none;gap:1vh}
+html.embed .board{width:min(100%, calc(89vh * 16 / 9));border-width:1.4vh}
+html.embed .caption{font-size:2.6vh;line-height:1.4;min-height:3.8vh;text-align:center;padding:0 1vh;margin:0}
+.board svg{display:block;width:100%;height:auto;aspect-ratio:16/9}
+.caption{font-family:var(--font-chalk);font-size:clamp(1.05rem,2.2vw,1.45rem);line-height:1.5;min-height:3em;margin:0}
+.caption b{color:var(--yellow);font-weight:700}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+#fs{margin-left:auto}
+button{font:inherit;font-size:.95rem;color:var(--chalk);background:transparent;border:1.5px solid var(--chalk-dim);border-radius:999px;padding:.4em 1em;cursor:pointer}
+button:hover{border-color:var(--yellow);color:var(--yellow)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+#play{min-width:5.5em;border-color:var(--yellow);color:var(--yellow)}
+#toggleSeek[aria-expanded="true"]{border-color:var(--yellow);color:var(--yellow)}
+/* 進度條列：獨佔 .controls 的第二列；黃色 6px 粗軌道畫在 #seekMarks（細線＝段落分界），上面疊透明的 range 與 16px 圓拇指 */
+.seekrow{display:flex;flex:1 0 100%;align-items:center;gap:12px}
+.seekrow[hidden]{display:none}
+#seekWrap{position:relative;flex:1 1 200px;min-width:120px;height:20px}
+#scrub{position:relative;z-index:1;-webkit-appearance:none;appearance:none;display:block;width:100%;height:20px;padding:0;margin:0;border:0;border-radius:0;background:transparent;cursor:pointer}
+#scrub::-webkit-slider-runnable-track{height:6px;background:transparent}
+#scrub::-moz-range-track{height:6px;border:0;background:transparent}
+#scrub::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;margin-top:-5px;border:2px solid var(--board-deep);border-radius:50%;background:var(--yellow)}
+#scrub::-moz-range-thumb{box-sizing:border-box;width:16px;height:16px;border:2px solid var(--board-deep);border-radius:50%;background:var(--yellow)}
+#seekMarks{position:absolute;left:8px;right:8px;top:7px;height:6px;border-radius:3px;overflow:hidden;background:var(--yellow);pointer-events:none}
+#seekMarks i{position:absolute;top:0;bottom:0;width:1px;background:var(--board-deep)}
+#time{flex:none;width:8.5em;text-align:right;font-variant-numeric:tabular-nums;color:var(--chalk-dim);font-size:.85rem}
+/* 標註工具（手寫筆跡＋文字）：標註層蓋在舞台上，平常 pointer-events:none，只有畫筆／文字啟用時才攔截；?embed=1 不建立 */
+.board{position:relative}
+.annoLayer{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2;--u:1px}
+.annoLayer canvas{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;background:none;border-radius:0;aspect-ratio:auto;box-shadow:none}
+.annoLayer canvas.on{pointer-events:auto;touch-action:none;cursor:crosshair}
+.annoLayer canvas.on.text-mode{cursor:text}
+.annoLabels{position:absolute;inset:0;pointer-events:none}
+.annoLabel{position:absolute;transform:translateY(-50%);font-family:var(--font-chalk,serif);font-size:calc(34 * var(--u));font-weight:700;line-height:1.25;padding:calc(4 * var(--u)) calc(14 * var(--u));background:rgba(26,43,35,.82);border:calc(2 * var(--u)) solid;border-radius:calc(10 * var(--u));white-space:pre-wrap;max-width:56%;word-break:break-word}
+.annoInput{position:absolute;transform:translateY(-50%);box-sizing:border-box;width:max(180px,32%);max-width:92%;font-family:var(--font-chalk,serif);font-size:max(16px,calc(30 * var(--u)));font-weight:700;pointer-events:auto;background:rgba(26,43,35,.95);border:2px dashed var(--yellow,#f2c14e);color:var(--chalk,#efe9d8)}
+.annoInput[hidden]{display:none}
+#toggleInk[aria-expanded="true"]{border-color:var(--yellow,#f2c14e);color:var(--yellow,#f2c14e)}
+/* 工具列：獨佔 .controls 的一整列 */
+.annoRow{display:flex;flex:1 0 100%;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.annoRow[hidden]{display:none}
+.annoSwatches{display:inline-flex;align-items:center;gap:8px}
+.annoSwatch{width:26px;height:26px;border-radius:50%;padding:0;border:2px solid transparent}
+.annoSwatch[aria-pressed="true"]{border-color:#fff;outline:2px solid var(--board-deep,var(--bg,#1a2b23))}
+.annoRow button[aria-pressed="true"]:not(.annoSwatch){border-color:var(--yellow,#f2c14e);color:var(--board-deep,#1a2b23);background:var(--yellow,#f2c14e)}
+.chapters{display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:0;list-style:none}
+.chapters button{font-size:.85rem;padding:.25em .8em;border-color:rgba(239,233,216,.25);color:var(--chalk-dim)}
+.chapters button[aria-current="true"]{border-color:var(--yellow);color:var(--yellow)}
+.note{color:var(--chalk-dim);font-size:.85rem;margin:0}
+.works h2{font-family:var(--font-chalk);font-size:1.15rem;margin:0 0 6px;color:var(--yellow)}
+.works ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 16px}
+.works a{color:var(--chalk);text-underline-offset:3px}
+.works span{display:block;color:var(--chalk-dim);font-size:.85rem}
+.t-chalk{font-family:var(--font-chalk);fill:var(--chalk)}
+.t-body{font-family:var(--font-body);fill:var(--chalk)}
+</style>
+
+<div class="wrap">
+  <section class="player" aria-label="動畫播放器">
+    <header>
+      <h1 id="title"></h1>
+      <p class="sub" id="subtitle"></p>
+    </header>
+    <div class="theater" id="theater">
+      <div class="stage-area"><div class="board"><svg id="stage" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img"></svg></div></div>
+      <p class="caption" id="caption" aria-live="polite"></p>
+    </div>
+    <div class="controls">
+      <button id="prev" type="button">上一段</button>
+      <button id="play" type="button">播放</button>
+      <button id="next" type="button">下一段</button>
+      <button id="toggleSeek" type="button" aria-expanded="false" aria-controls="seekrow">進度條 ▸</button>
+      <button id="fs" type="button">全螢幕</button>
+      <div class="seekrow" id="seekrow" hidden>
+        <div id="seekWrap">
+          <input id="scrub" type="range" min="0" max="1" step="0.05" value="0" aria-label="時間軸">
+          <div id="seekMarks" aria-hidden="true"></div>
+        </div>
+        <span id="time"></span>
+      </div>
+    </div>
+  </section>
+  <ul class="chapters" id="chapters"></ul>
+  <section class="works" aria-labelledby="works-h"><h2 id="works-h">延伸閱讀</h2><ul id="works"></ul></section>
+  <p class="note" id="note"></p>
+</div>
+
+<script>
+'use strict';
+// ===================== 設定區（段落與字幕由 timing.json 注入）=====================
+// ===== 教學動畫共用圖形（不得與範本播放器或工具重名）=====
+const C = { yellow: 'var(--yellow)', blue: 'var(--blue)', green: 'var(--green)', red: 'var(--red)', orange: 'var(--orange)', purple: '#b9a3e3', chalk: 'var(--chalk)', dim: 'var(--chalk-dim)', deep: 'var(--board-deep)' };
+function arrow(x1, y1, x2, y2, color = C.dim, op = 1, both = false, k = 1, dash = '') {
+  const ex = lerp(x1, x2, k), ey = lerp(y1, y2, k);
+  const ang = Math.atan2(y2 - y1, x2 - x1), h = 16;
+  const head = (x, y, a) => `<polygon points="${x},${y} ${x - h * Math.cos(a - 0.45)},${y - h * Math.sin(a - 0.45)} ${x - h * Math.cos(a + 0.45)},${y - h * Math.sin(a + 0.45)}" fill="${color}"/>`;
+  let g = `<g opacity="${op}"><line x1="${x1}" y1="${y1}" x2="${ex}" y2="${ey}" stroke="${color}" stroke-width="4" stroke-linecap="round"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`;
+  if (k >= 0.99) { g += head(x2, y2, ang); if (both) g += head(x1, y1, ang + Math.PI); }
+  return g + '</g>';
+}
+// 曲線箭頭：二次貝茲，k 為繪製進度（以 dasharray 截斷）
+function curve(x1, y1, cx, cy, x2, y2, color = C.dim, op = 1, k = 1, label = '', lx = 0, ly = 0) {
+  const len = 1400;
+  let g = `<g opacity="${op}"><path d="M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="4" stroke-dasharray="10 9" pathLength="${len}" style="stroke-dashoffset:0"/>`;
+  if (k < 0.99) g = `<g opacity="${op}"><path d="M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="4" pathLength="${len}" stroke-dasharray="${(len * k).toFixed(1)} ${len}"/>`;
+  else {
+    const a = Math.atan2(y2 - cy, x2 - cx), h = 16;
+    g += `<polygon points="${x2},${y2} ${x2 - h * Math.cos(a - 0.45)},${y2 - h * Math.sin(a - 0.45)} ${x2 - h * Math.cos(a + 0.45)},${y2 - h * Math.sin(a + 0.45)}" fill="${color}"/>`;
+  }
+  if (label) g += txt(lx, ly, label, { c: 't-body', s: 24, f: color, o: k >= 0.99 ? 1 : 0 });
+  return g + '</g>';
+}
+function hframe(x, y, w, h, op, label = '', color = C.yellow, glow = 0, size = 32) {
+  return `<g opacity="${op}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="26" fill="rgba(242,193,78,${0.04 + 0.08 * glow})" stroke="${color}" stroke-width="${4 + 2 * glow}" stroke-dasharray="16 12"/>` +
+    (label ? txt(x + 26, y + 44, label, { s: size, w: 1, f: color }) : '') + '</g>';
+}
+function card(x, y, W, h, op, lines, color = C.chalk) {
+  // lines: [[文字, 字級, 顏色, 粗體, 字型類別, 置中]]，依序往下排
+  let g = `<g opacity="${op}">${box(x, y, W, h, color, 1, C.deep)}`;
+  let yy = y + 14;
+  for (const [s, size = 28, f = C.chalk, bold = false, c = 't-chalk', cx = false] of lines) {
+    yy += size * 1.25;
+    g += txt(cx ? x + W / 2 : x + 24, yy, s, { s: size, f, w: bold, c, a: cx ? 'middle' : 'start' });
+    yy += size * 0.3;
+  }
+  return g + '</g>';
+}
+function ccard(x, y, w, h, op, title, sub, color = C.chalk, tsize = 32, ssize = 24) {
+  return `<g opacity="${op}">${box(x, y, w, h, color, 1, C.deep)}` +
+    txt(x + w / 2, y + h / 2 + (sub ? -6 : tsize * 0.35), title, { a: 'middle', s: tsize, w: 1, f: color }) +
+    (sub ? txt(x + w / 2, y + h / 2 + ssize + 8, sub, { a: 'middle', c: 't-body', s: ssize, f: C.dim }) : '') + '</g>';
+}
+function chip(x, y, w, label, op, color = C.chalk, size = 26, h = 58) {
+  return `<g opacity="${op}">${box(x, y, w, h, color, 1, C.deep)}${txt(x + w / 2, y + h / 2 + size * 0.36, label, { a: 'middle', s: size, f: color })}</g>`;
+}
+function tick(x, y, s, op, color = C.green) {
+  return `<path d="M${x - s} ${y} L${x - s / 3} ${y + s * 0.7} L${x + s} ${y - s * 0.8}" fill="none" stroke="${color}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="${op}"/>`;
+}
+function cross(x, y, s, op, color = C.red) {
+  return `<g opacity="${op}" stroke="${color}" stroke-width="12" stroke-linecap="round"><line x1="${x - s}" y1="${y - s}" x2="${x + s}" y2="${y + s}"/><line x1="${x + s}" y1="${y - s}" x2="${x - s}" y2="${y + s}"/></g>`;
+}
+function dot(x, y, r, color, op = 1) { return `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}" opacity="${op}"/>`; }
+function underline(x1, x2, y, k, color = C.yellow, op = 1) { return `<line x1="${x1}" y1="${y}" x2="${lerp(x1, x2, k)}" y2="${y}" stroke="${color}" stroke-width="4" opacity="${op}"/>`; }
+// 依進度逐一出現：第 i 個元素在 t0 + i*step 開始、花 dur 秒
+const stagger = (u, t0, i, step = 0.6, dur = 0.7) => ease(P(u, t0 + i * step, t0 + i * step + dur));
+
+// 下一個字怎麼選出來？——LLM 選字向量（場景檔：META＋s1…s10；段落、秒數、字幕在 timing.json）
+const META = {
+  title: '下一個字怎麼選出來？',
+  subtitle: '10 段・約 2 分 8 秒・可停在任一段解說',
+  ariaLabel: '教學動畫：說明大型語言模型每次只猜下一個字。每個字是一個方向，意思相近的字方向相近；模型把整句濃縮成一支方向箭頭，跟每個字比對，越對齊分數越高，再換算成機率；溫度旋鈕調整機率攤平或集中，top-p 圍籬剪掉冷門尾巴，最後照機率抽出一個字接回句子，再算下一個字。',
+  note: '出處：S1 Vaswani et al.〈Attention Is All You Need〉§3.1、§3.4 https://arxiv.org/abs/1706.03762；S2 Mikolov et al.〈Efficient Estimation of Word Representations in Vector Space〉摘要、§1.1、§5 https://arxiv.org/abs/1301.3781；S3 Holtzman et al.〈The Curious Case of Neural Text Degeneration〉摘要、§3.1–3.3 https://arxiv.org/abs/1904.09751。星空地圖、手電筒、彈珠碗、溫度旋鈕、圍籬、轉盤皆為視覺比喻；彈珠數與字的位置是示意，不是真實模型輸出。鍵盤：空白鍵播放／暫停，左右方向鍵切換段落，F 鍵全螢幕。畫面只由時間決定。',
+  works: [
+    ['S1 Attention Is All You Need', 'Vaswani et al.，2017（§3.4 Embeddings and Softmax）', 'https://arxiv.org/abs/1706.03762'],
+    ['S2 Efficient Estimation of Word Representations in Vector Space', 'Mikolov et al.，2013（word2vec）', 'https://arxiv.org/abs/1301.3781'],
+    ['S3 The Curious Case of Neural Text Degeneration', 'Holtzman et al.，2019（nucleus／top-p sampling）', 'https://arxiv.org/abs/1904.09751'],
+  ],
+};
+
+// ===== 本動畫的輔助圖形（一律以 tsv 開頭，避免與範本與共用圖形重名）=====
+const tsvk = (u, a, d = 0.7) => ease(P(u, a, a + d));
+const tsvOut = (x) => 1 - Math.pow(1 - x, 3);
+const TSV_INK = '#1a2b23';
+const TSV_BOARD = '#23392f';
+const TSV_O = [1040, 500];
+// 星空地圖上的字（位置是示意）
+const TSV_W = [
+  ['國王', 700, 300, 'blue'], ['皇后', 880, 300, 'blue'], ['男人', 700, 430, 'blue'], ['女人', 880, 430, 'blue'],
+  ['公園', 1300, 300, 'yellow'], ['海邊', 1420, 390, 'yellow'], ['操場', 1350, 450, 'yellow'],
+  ['吃飯', 1380, 620, 'green'],
+  ['蘋果', 1100, 700, 'orange'], ['香蕉', 1240, 720, 'orange'],
+];
+const tsvWord = (n) => TSV_W.find((w) => w[0] === n);
+const tsvAng = (x, y) => Math.atan2(y - TSV_O[1], x - TSV_O[0]) * 180 / Math.PI;
+// 方向越對齊越亮（示意：對齊程度取 cos 的 6 次方）
+const tsvBright = (x, y, deg) => { const d = (tsvAng(x, y) - deg) * Math.PI / 180; return Math.pow(Math.max(0, Math.cos(d)), 6); };
+// 碗與彈珠用的六個字與示意彈珠數
+const TSV_BOWL = ['公園', '海邊', '操場', '吃飯', '蘋果', '香蕉'];
+const TSV_BASE = [40, 25, 15, 12, 5, 3];
+const TSV_LOW = [78, 14, 5, 3, 0, 0];
+const TSV_HIGH = [24, 20, 18, 16, 12, 10];
+
+function tsvTag(op, label = '比喻', color = C.orange, w = 160) {
+  return `<g opacity="${op}">${box(1540 - w, 56, w, 60, color, 1, C.deep)}${txt(1540 - w / 2, 98, label, { a: 'middle', s: 30, w: 1, f: color })}</g>`;
+}
+// 一顆星：b＝亮度 0–1
+function tsvStar(x, y, label, color, op, b = 0, size = 30) {
+  if (op <= 0.001) return '';
+  let g = `<g opacity="${op.toFixed(3)}">`;
+  if (b > 0.01) g += `<circle cx="${x}" cy="${y}" r="${(12 + 26 * b).toFixed(1)}" fill="${color}" opacity="${(0.32 * b).toFixed(3)}"/>`;
+  g += `<circle cx="${x}" cy="${y}" r="${(7 + 3 * b).toFixed(1)}" fill="${color}"/>`;
+  g += txt(x, y - 24 - 16 * b, label, { a: 'middle', s: Math.round(size + 6 * b), w: b > 0.5 ? 1 : 0, f: color }).replace('<text ', `<text stroke="${TSV_BOARD}" stroke-width="9" stroke-linejoin="round" paint-order="stroke" `);
+  return g + '</g>';
+}
+// 星空地圖：opt.b(name) 回傳亮度、opt.op 整體透明度、opt.dimOther 其他字淡化
+function tsvMap(u, op, opt = {}) {
+  if (op <= 0.001) return '';
+  let g = `<g opacity="${op.toFixed(3)}">`;
+  g += `<rect x="560" y="200" width="960" height="580" rx="26" fill="rgba(0,0,0,.12)" stroke="${C.dim}" stroke-width="3" stroke-dasharray="6 10"/>`;
+  g += txt(584, 762, '字的星空地圖', { c: 't-body', s: 24, f: C.dim });
+  g += txt(1520, 816, '示意：真實維度遠多於 2 維', { a: 'end', c: 't-body', s: 24, f: C.dim });
+  g += dot(TSV_O[0], TSV_O[1], 8, C.dim);
+  if (opt.extra) g += opt.extra;
+  TSV_W.forEach(([n, x, y, col], i) => {
+    const so = opt.starOp ? opt.starOp(i) : 1;
+    g += tsvStar(x, y, n, C[col], so, opt.b ? opt.b(n, x, y) : 0);
+  });
+  return g + '</g>';
+}
+function tsvBowl(cx, bottom, w, op, label, lsize = 30, ly = 0, color = C.chalk) {
+  const l = cx - w / 2, r = cx + w / 2, top = bottom - 56;
+  return `<g opacity="${op.toFixed(3)}"><path d="M${l} ${top} L${l} ${bottom - 18} Q${l} ${bottom} ${l + 18} ${bottom} L${r - 18} ${bottom} Q${r} ${bottom} ${r} ${bottom - 18} L${r} ${top}" fill="rgba(239,233,216,.06)" stroke="${color}" stroke-width="4" stroke-linejoin="round"/>` +
+    txt(cx, ly || bottom + 44, label, { a: 'middle', s: lsize, w: 1, f: color }) + '</g>';
+}
+// 彈珠堆：n 顆、cols 欄、半徑 r、間距 gap，由碗底往上疊
+function tsvPile(cx, bottom, n, cols, r, gap, op = 1, color = C.yellow) {
+  let g = '';
+  const w = (cols - 1) * gap;
+  for (let j = 0; j < n; j++) {
+    const row = Math.floor(j / cols), col = j % cols;
+    g += `<circle cx="${(cx - w / 2 + col * gap).toFixed(1)}" cy="${(bottom - 6 - r - row * gap).toFixed(1)}" r="${r}" fill="${color}" opacity="${op}"/>`;
+  }
+  return g;
+}
+const tsvBowlX = (i) => 330 + i * 200;
+const tsvMix = (a, b, k) => a.map((v, i) => Math.round(lerp(v, b[i], k)));
+// 指南針式箭頭（從 TSV_O 出發）
+function tsvNeedle(deg, len, op, color = C.yellow) {
+  const a = deg * Math.PI / 180;
+  return arrow(TSV_O[0], TSV_O[1], TSV_O[0] + len * Math.cos(a), TSV_O[1] + len * Math.sin(a), color, op);
+}
+
+// ---------- s1 文字接龍 ----------
+function tsv1(u) {
+  let g = head(u, '開場', '文字接龍');
+  const so = tsvk(u, 0.4, 0.8);
+  g += txt(160, 432, '今天天氣很好，我們去', { s: 64, w: 1, o: so });
+  const blink = 0.35 + 0.65 * (0.5 + 0.5 * Math.cos(2 * Math.PI * u / 1.2));
+  g += `<rect x="820" y="364" width="160" height="86" rx="12" fill="rgba(242,193,78,.08)" stroke="${C.yellow}" stroke-width="5" stroke-dasharray="12 9" opacity="${(so * blink).toFixed(3)}"/>`;
+  [['公園？', 1110, 250], ['海邊？', 1250, 372], ['吃飯？', 1110, 494]].forEach(([s, x, y], i) => {
+    const o = tsvk(u, 3 + i * 1.0, 0.6);
+    g += curve(986, 407, (986 + x) / 2, y + 35, x - 6, y + 35, C.dim, o * 0.8, tsvk(u, 3 + i * 1.0, 0.6));
+    g += chip(x, y, 190, s, o, C.chalk, 34, 70);
+  });
+  g += txt(160, 680, '模型每一步只做一件事：猜下一個字', { s: 44, w: 1, f: C.yellow, o: tsvk(u, 7, 0.8) });
+  g += txt(160, 752, '（字或字的片段，叫做 token）', { c: 't-body', s: 30, f: C.dim, o: tsvk(u, 8.8, 0.8) });
+  return g;
+}
+
+// ---------- s2 字住在星空地圖 ----------
+function tsv2(u) {
+  let g = head(u, '字是方向', '字住在星空地圖') + tsvTag(tsvk(u, 0.5));
+  const lines = [['每顆星＝一個字', 1.0, C.chalk], ['意思近 → 住得近', 6.4, C.yellow], ['從中心看＝一個方向', 9.6, C.blue]];
+  lines.forEach(([s, t0, col], i) => { g += txt(80, 320 + i * 90, s, { s: 34, w: 1, f: col, o: tsvk(u, t0, 0.7) }); });
+  // 星座連線與分組名
+  const lo = tsvk(u, 6.2, 1.0);
+  const link = (a, b) => { const A = tsvWord(a), B = tsvWord(b); return `<line x1="${A[1]}" y1="${A[2]}" x2="${B[1]}" y2="${B[2]}" stroke="${C.dim}" stroke-width="2.5" stroke-dasharray="4 8" opacity="${(0.8 * lo).toFixed(3)}"/>`; };
+  let extra = link('國王', '皇后') + link('男人', '女人') + link('國王', '男人') + link('皇后', '女人') +
+    link('公園', '海邊') + link('海邊', '操場') + link('操場', '公園') + link('蘋果', '香蕉');
+  const go = tsvk(u, 7.2, 0.8);
+  extra += txt(790, 505, '人物', { a: 'middle', c: 't-body', s: 26, f: C.blue, o: go }) +
+    txt(1440, 505, '出遊', { a: 'middle', c: 't-body', s: 26, f: C.yellow, o: go }) +
+    txt(1000, 748, '水果', { a: 'middle', c: 't-body', s: 26, f: C.orange, o: go });
+  // 從中心到每顆星的方向線
+  const ro = tsvk(u, 9.6, 1.4);
+  TSV_W.forEach(([, x, y, col]) => { extra += `<line x1="${TSV_O[0]}" y1="${TSV_O[1]}" x2="${x}" y2="${y}" stroke="${C[col]}" stroke-width="2" opacity="${(0.45 * ro).toFixed(3)}"/>`; });
+  extra += txt(TSV_O[0], TSV_O[1] + 40, '中心', { a: 'middle', c: 't-body', s: 24, f: C.dim, o: ro });
+  g += tsvMap(u, tsvk(u, 0.3, 0.8), { extra, starOp: (i) => stagger(u, 1.4, i, 0.45, 0.6) });
+  return g;
+}
+
+// ---------- s3 方向會說話 ----------
+function tsv3(u) {
+  let g = head(u, '字是方向', '方向會說話');
+  const M = tsvWord('男人'), Wn = tsvWord('女人'), K = tsvWord('國王'), Q = tsvWord('皇后');
+  const a1 = tsvk(u, 1.0, 1.4), a2 = tsvk(u, 4.4, 1.6);
+  let extra = arrow(M[1] + 18, M[2], Wn[1] - 18, Wn[2], C.yellow, P(u, 1.0, 1.2), false, a1);
+  extra += txt(790, 474, '這一步', { a: 'middle', c: 't-body', s: 24, f: C.yellow, o: tsvk(u, 2.2, 0.6) });
+  extra += arrow(K[1] + 18, K[2], Q[1] - 18, Q[2], C.yellow, P(u, 4.4, 4.6), false, a2);
+  extra += txt(790, 344, '一樣的步', { a: 'middle', c: 't-body', s: 24, f: C.yellow, o: tsvk(u, 5.6, 0.6) });
+  const qb = tsvk(u, 6.0, 0.8);
+  extra += `<circle cx="${Q[1]}" cy="${Q[2]}" r="${(30 + 6 * Math.sin(u * 3)).toFixed(1)}" fill="none" stroke="${C.yellow}" stroke-width="4" opacity="${qb.toFixed(3)}"/>`;
+  g += tsvMap(u, 1, { extra, b: (n) => (n === '皇后' ? qb : 0) });
+  // 左側：用字講的「算式」
+  [['國王', 3.6, C.chalk], ['− 男人 ＋ 女人', 4.4, C.chalk], ['≈ 皇后', 6.2, C.yellow]].forEach(([s, t0, col], i) => {
+    g += txt(80, 320 + i * 82, s, { s: 42, w: 1, f: col, o: tsvk(u, t0, 0.7) });
+  });
+  g += card(80, 640, 460, 78, tsvk(u, 8.6, 0.8), [['巴黎 − 法國 ＋ 義大利 ≈ 羅馬', 26, C.chalk, true]]);
+  g += txt(80, 784, '（S2 的另一個例子）', { c: 't-body', s: 24, f: C.dim, o: tsvk(u, 9.2, 0.7) });
+  return g;
+}
+
+// ---------- s4 整句濃縮成一支箭頭 ----------
+function tsv4(u) {
+  let g = head(u, '比對', '整句濃縮成一支箭頭');
+  const words = ['今天', '天氣', '很好', '我們去'];
+  const bx = 300, by = 540;
+  // 球：先在左邊，後移到地圖中心
+  const mv = tsvk(u, 5.8, 1.6);
+  const cx = lerp(bx, TSV_O[0], mv), cy = lerp(by, TSV_O[1], mv), R = lerp(96, 14, mv);
+  const mo = tsvk(u, 5.4, 1.0) * 0.55 + tsvk(u, 7.6, 0.8) * 0.45;
+  const fin = -30;
+  const ang = lerp(130, fin, tsvOut(P(u, 8.0, 10.6))) + 14 * Math.sin((u - 8) * 4.2) * (1 - P(u, 8.0, 10.6)) * (u > 8 ? 1 : 0);
+  const no = tsvk(u, 7.6, 0.6);
+  const hf = tsvk(u, 10.4, 0.8);
+  const extra = `<rect x="1226" y="244" width="270" height="244" rx="26" fill="rgba(242,193,78,${(0.08 * hf).toFixed(3)})" stroke="${C.yellow}" stroke-width="4" stroke-dasharray="14 10" opacity="${hf.toFixed(3)}"/>` +
+    (no > 0.001 ? tsvNeedle(ang, lerp(40, 290, tsvk(u, 7.6, 0.9)), no) : '');
+  g += tsvMap(u, mo, { extra });
+  // 句子小卡飛進球
+  words.forEach((s, i) => {
+    const appear = tsvk(u, 0.4 + i * 0.3, 0.5), fly = tsvk(u, 2.0 + i * 0.7, 0.9);
+    const x0 = 80 + i * 112 + 50, y0 = 249;
+    const x = lerp(x0, bx, fly), y = lerp(y0, by, fly);
+    g += chip(x - 50, y - 29, 100, s, appear * (1 - fly), C.chalk, 28, 58);
+  });
+  const bo = tsvk(u, 1.0, 0.6) * (1 - tsvk(u, 7.2, 0.6) * 0.3);
+  g += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${R.toFixed(1)}" fill="rgba(127,182,217,.18)" stroke="${C.blue}" stroke-width="5" opacity="${bo.toFixed(3)}"/>`;
+  g += txt(cx, cy + 11, '讀整句', { a: 'middle', s: 32, w: 1, f: C.blue, o: bo * (1 - mv) });
+  g += txt(80, 700, '前文 → 一支方向箭頭', { s: 36, w: 1, f: C.yellow, o: tsvk(u, 8.4, 0.8) });
+  g += txt(80, 760, '指向「接下來可能出現」的那一區', { c: 't-body', s: 26, f: C.dim, o: tsvk(u, 10.6, 0.8) });
+  return g;
+}
+
+// ---------- s5 手電筒照星星 ----------
+function tsvConeDeg(u) {
+  if (u < 2.2) return -150;
+  if (u < 5.4) return lerp(-150, 70, ease(P(u, 2.2, 5.4)));
+  if (u < 6.2) return 70;
+  return lerp(70, -30, ease(P(u, 6.2, 8.8)));
+}
+function tsv5(u) {
+  let g = head(u, '比對', '手電筒照星星') + tsvTag(tsvk(u, 0.5));
+  const deg = tsvConeDeg(u), co = tsvk(u, 1.0, 0.8);
+  const a = deg * Math.PI / 180, sp = 10 * Math.PI / 180, L = 640;
+  const [ox, oy] = TSV_O;
+  const pts = `${ox},${oy} ${(ox + L * Math.cos(a - sp)).toFixed(1)},${(oy + L * Math.sin(a - sp)).toFixed(1)} ${(ox + L * Math.cos(a + sp)).toFixed(1)},${(oy + L * Math.sin(a + sp)).toFixed(1)}`;
+  const extra = `<defs><clipPath id="tsvClip"><rect x="560" y="200" width="960" height="580" rx="26"/></clipPath></defs>` +
+    `<polygon points="${pts}" fill="${C.yellow}" opacity="${(0.16 * co).toFixed(3)}" clip-path="url(#tsvClip)"/>` +
+    tsvNeedle(deg, 290, co);
+  g += tsvMap(u, 1, { extra, b: (n, x, y) => co * tsvBright(x, y, deg) });
+  const lines = [['手電筒＝整句的箭頭', 1.4, C.chalk], ['照得越正 → 越亮', 4.6, C.yellow], ['越亮 → 分數越高', 9.0, C.yellow]];
+  lines.forEach(([s, t0, col], i) => { g += txt(80, 320 + i * 86, s, { s: 34, w: 1, f: col, o: tsvk(u, t0, 0.7) }); });
+  g += card(80, 590, 450, 176, tsvk(u, 10.4, 0.8), [['比對用的是', 28, C.dim], ['同一份字表', 36, C.chalk, true], ['（S1 §3.4）', 24, C.dim, false, 't-body']]);
+  return g;
+}
+
+// ---------- s6 亮度變彈珠 ----------
+function tsv6(u) {
+  let g = head(u, '機率', '亮度變彈珠') + tsvTag(tsvk(u, 0.5), '示意數字', C.orange, 200);
+  const bright = TSV_BOWL.map((n) => { const w = tsvWord(n); return tsvBright(w[1], w[2], -30); });
+  g += txt(80, 290, '亮度', { c: 't-body', s: 28, f: C.dim, o: tsvk(u, 0.4) });
+  g += txt(80, 740, '彈珠', { c: 't-body', s: 28, f: C.dim, o: tsvk(u, 1.0) });
+  TSV_BOWL.forEach((n, i) => {
+    const x = tsvBowlX(i), col = C[tsvWord(n)[3]];
+    const so = stagger(u, 0.3, i, 0.15, 0.6);
+    if (bright[i] > 0.01) g += `<circle cx="${x}" cy="280" r="${(12 + 26 * bright[i]).toFixed(1)}" fill="${col}" opacity="${(0.32 * bright[i] * so).toFixed(3)}"/>`;
+    g += dot(x, 280, 7 + 3 * bright[i], col, so);
+    g += tsvBowl(x, 776, 130, tsvk(u, 1.0, 0.6), n, 30, 822, col);
+    // 彈珠一顆顆落下
+    const n0 = TSV_BASE[i];
+    for (let j = 0; j < n0; j++) {
+      const t0 = 1.6 + j * 0.12 + i * 0.06, f = ease(P(u, t0, t0 + 0.5));
+      if (f <= 0) break;
+      const row = Math.floor(j / 5), c = j % 5;
+      const tx = x - 36 + c * 18, ty = 776 - 6 - 8 - row * 18;
+      g += `<circle cx="${lerp(x, tx, f).toFixed(1)}" cy="${lerp(320, ty, f).toFixed(1)}" r="8" fill="${C.yellow}"/>`;
+    }
+  });
+  g += txt(1520, 450, '一共 100 顆', { a: 'end', s: 34, w: 1, f: C.yellow, o: tsvk(u, 8.4, 0.8) });
+  g += txt(1520, 504, '越亮，拿得越多', { a: 'end', c: 't-body', s: 28, f: C.chalk, o: tsvk(u, 9.4, 0.8) });
+  return g;
+}
+
+// ---------- s7 溫度旋鈕 ----------
+function tsvKnob(cx, cy, deg, op) {
+  const a = (deg - 90) * Math.PI / 180;
+  let g = `<g opacity="${op.toFixed(3)}"><circle cx="${cx}" cy="${cy}" r="46" fill="${C.deep}" stroke="${C.chalk}" stroke-width="4"/>`;
+  g += `<line x1="${cx}" y1="${cy}" x2="${(cx + 36 * Math.cos(a)).toFixed(1)}" y2="${(cy + 36 * Math.sin(a)).toFixed(1)}" stroke="${C.yellow}" stroke-width="7" stroke-linecap="round"/>`;
+  g += txt(cx - 76, cy + 10, '低', { a: 'middle', c: 't-body', s: 26, f: C.dim }) + txt(cx + 76, cy + 10, '高', { a: 'middle', c: 't-body', s: 26, f: C.dim });
+  return g + '</g>';
+}
+function tsv7(u) {
+  let g = head(u, '機率', '溫度旋鈕') + tsvTag(tsvk(u, 0.5));
+  const panels = [
+    { x0: 160, cx: 435, title: '調低', target: TSV_LOW, t0: 2.0, deg: -110, note: '擠向第一名', ncol: C.yellow },
+    { x0: 920, cx: 1195, title: '調高', target: TSV_HIGH, t0: 7.4, deg: 110, note: '冷門字也分得到', ncol: C.blue },
+  ];
+  g += `<line x1="800" y1="210" x2="800" y2="820" stroke="${C.dim}" stroke-width="2" stroke-dasharray="6 10" opacity="${tsvk(u, 0.6).toFixed(3)}"/>`;
+  panels.forEach((p, pi) => {
+    const po = tsvk(u, 0.6 + pi * 0.4, 0.7);
+    const k = ease(P(u, p.t0, p.t0 + 3.6));
+    g += txt(p.cx, 222, p.title, { a: 'middle', s: 36, w: 1, o: po });
+    g += tsvKnob(p.cx, 300, lerp(0, p.deg, k), po);
+    g += txt(p.cx, 410, p.note, { a: 'middle', s: 32, w: 1, f: p.ncol, o: tsvk(u, p.t0 + 3.4, 0.7) });
+    const cnt = tsvMix(TSV_BASE, p.target, k);
+    TSV_BOWL.forEach((n, i) => {
+      const x = p.x0 + i * 110, col = C[tsvWord(n)[3]];
+      g += tsvBowl(x, 770, 84, po, n, 24, 806, col);
+      g += `<g opacity="${po.toFixed(3)}">${tsvPile(x, 770, cnt[i], 4, 6, 13)}</g>`;
+    });
+  });
+  return g;
+}
+
+// ---------- s8 Top-p 圍籬 ----------
+function tsv8(u) {
+  let g = head(u, '抽字', 'Top-p 圍籬') + tsvTag(tsvk(u, 0.5));
+  const steps = [1.8, 3.2, 4.6, 6.0];
+  let inc = 0; steps.forEach((t) => { if (u >= t) inc++; });
+  const grow = steps.reduce((a, t) => a + ease(P(u, t, t + 0.6)), 0); // 0–4，連續
+  const closed = tsvk(u, 7.0, 0.7), dimOut = tsvk(u, 8.0, 0.8);
+  // 累積條
+  const bx = 300, bw = 1000, mo = tsvk(u, 0.8, 0.6);
+  g += `<g opacity="${mo.toFixed(3)}"><rect x="${bx}" y="228" width="${bw}" height="34" rx="17" fill="none" stroke="${C.dim}" stroke-width="3"/>`;
+  let acc = 0;
+  TSV_BOWL.forEach((n, i) => {
+    const part = clamp(grow - i, 0, 1) * TSV_BASE[i] / 100;
+    if (part > 0) g += `<rect x="${(bx + acc * bw).toFixed(1)}" y="230" width="${(part * bw).toFixed(1)}" height="30" fill="${C[tsvWord(n)[3]]}" opacity="0.85"/>`;
+    acc += TSV_BASE[i] / 100;
+  });
+  g += `<line x1="${bx + 0.9 * bw}" y1="212" x2="${bx + 0.9 * bw}" y2="278" stroke="${C.chalk}" stroke-width="4"/></g>`;
+  g += txt(bx - 16, 256, '累積', { a: 'end', c: 't-body', s: 26, f: C.dim, o: mo });
+  g += txt(bx + 0.9 * bw, 318, '九成', { a: 'middle', s: 30, w: 1, o: mo });
+  // 碗
+  TSV_BOWL.forEach((n, i) => {
+    const x = tsvBowlX(i), col = C[tsvWord(n)[3]];
+    const op = i >= 4 ? 1 - 0.72 * dimOut : 1;
+    g += tsvBowl(x, 776, 130, op * tsvk(u, 0.3, 0.6), n, 30, 822, col);
+    g += `<g opacity="${(op * tsvk(u, 0.3, 0.6)).toFixed(3)}">${tsvPile(x, 776, TSV_BASE[i], 5, 8, 18)}</g>`;
+  });
+  // 圍籬：從第一個碗往右長
+  if (grow > 0.01) {
+    const right = lerp(tsvBowlX(0) + 90, tsvBowlX(3) + 90, clamp((grow - 1) / 3, 0, 1));
+    const w = right - 240;
+    g += `<rect x="240" y="568" width="${w.toFixed(1)}" height="270" rx="24" fill="rgba(242,193,78,.05)" stroke="${C.yellow}" stroke-width="5" stroke-dasharray="16 12" opacity="${clamp(grow, 0, 1).toFixed(3)}"/>`;
+    // 關門：一道實線閘門落下
+    if (closed > 0.001) g += `<line x1="${right.toFixed(1)}" y1="568" x2="${right.toFixed(1)}" y2="${lerp(568, 838, closed).toFixed(1)}" stroke="${C.yellow}" stroke-width="12" stroke-linecap="round"/>`;
+  }
+  g += txt(1170, 520, '關門！', { a: 'middle', s: 38, w: 1, f: C.yellow, o: tsvk(u, 7.4, 0.6) * (1 - tsvk(u, 8.8, 0.6)) });
+  g += txt(1430, 520, '尾巴不參加', { a: 'middle', s: 32, w: 1, f: C.dim, o: tsvk(u, 8.8, 0.7) });
+  g += txt(1520, 420, 'Top-k：不看累積，固定只圈前 k 個', { a: 'end', c: 't-body', s: 26, f: C.chalk, o: tsvk(u, 9.8, 0.8) });
+  return g;
+}
+
+// ---------- s9 轉盤抽字 ----------
+function tsv9(u) {
+  let g = head(u, '抽字', '轉盤抽字') + tsvTag(tsvk(u, 0.5));
+  const cx = 520, cy = 540, R = 230;
+  const vals = TSV_BASE.slice(0, 4), sum = vals.reduce((a, b) => a + b, 0);
+  const finalRot = -90 - (vals[0] / sum) * 180 + 360 * 3;
+  const rot = finalRot * tsvOut(P(u, 1.4, 6.6));
+  const wo = tsvk(u, 0.4, 0.7);
+  let a0 = 0;
+  g += `<g opacity="${wo.toFixed(3)}">`;
+  vals.forEach((v, i) => {
+    const span = v / sum * 360, s = (a0 + rot) * Math.PI / 180, e = (a0 + span + rot) * Math.PI / 180, mid = (a0 + span / 2 + rot) * Math.PI / 180;
+    const col = [C.yellow, C.blue, C.purple, C.green][i];
+    g += `<path d="M${cx} ${cy} L${(cx + R * Math.cos(s)).toFixed(1)} ${(cy + R * Math.sin(s)).toFixed(1)} A${R} ${R} 0 ${span > 180 ? 1 : 0} 1 ${(cx + R * Math.cos(e)).toFixed(1)} ${(cy + R * Math.sin(e)).toFixed(1)} Z" fill="${col}" stroke="${TSV_INK}" stroke-width="4"/>`;
+    g += txt(cx + 140 * Math.cos(mid), cy + 140 * Math.sin(mid) + 11, TSV_BOWL[i], { a: 'middle', s: 32, w: 1, f: TSV_INK });
+    a0 += span;
+  });
+  g += `<circle cx="${cx}" cy="${cy}" r="18" fill="${TSV_INK}" stroke="${C.chalk}" stroke-width="3"/>`;
+  g += `<polygon points="${cx - 22},${cy - R - 34} ${cx + 22},${cy - R - 34} ${cx},${cy - R + 6}" fill="${C.chalk}"/></g>`;
+  const pick = tsvk(u, 6.8, 0.6);
+  g += txt(cx + 50, cy - R - 6, '抽中：公園', { s: 34, w: 1, f: C.yellow, o: pick });
+  g += txt(cx, 818, '圍籬外的字不參加抽籤', { a: 'middle', c: 't-body', s: 26, f: C.dim, o: tsvk(u, 2.4, 0.8) });
+  // 右側兩張對照卡
+  const c1 = tsvk(u, 7.8, 0.7), c2 = tsvk(u, 10.0, 0.7);
+  g += card(880, 300, 640, 170, c1, [['永遠只挑第一名', 34, C.chalk, true], ['→ 平淡又奇怪地重複（S3）', 28, C.red]]);
+  g += cross(1462, 400, 22, c1);
+  g += card(880, 520, 640, 170, c2, [['照機率抽（只在圍籬內）', 34, C.chalk, true], ['→ 保留變化，剪掉不可靠的尾巴', 28, C.green]]);
+  g += tick(1462, 612, 26, c2);
+  return g;
+}
+
+// ---------- s10 接回去，再來一次 ----------
+function tsv10(u) {
+  let g = head(u, '收束', '接回去，再來一次');
+  g += txt(140, 372, '今天天氣很好，我們去', { s: 52, w: 1, o: tsvk(u, 0.2, 0.6) });
+  const f = tsvk(u, 1.0, 1.6);
+  g += `<rect x="676" y="314" width="128" height="76" rx="12" fill="none" stroke="${C.yellow}" stroke-width="4" stroke-dasharray="10 8" opacity="${((1 - f) * tsvk(u, 0.2, 0.6)).toFixed(3)}"/>`;
+  g += txt(lerp(1180, 740, f), lerp(520, 372, f), '公園', { a: 'middle', s: 52, w: 1, f: C.yellow, o: tsvk(u, 0.6, 0.5) });
+  const nb = 0.4 + 0.6 * (0.5 + 0.5 * Math.cos(2 * Math.PI * (u - 3.4) / 1.2));
+  g += `<rect x="820" y="314" width="128" height="76" rx="12" fill="rgba(242,193,78,.08)" stroke="${C.yellow}" stroke-width="5" stroke-dasharray="12 9" opacity="${(tsvk(u, 3.2, 0.6) * nb).toFixed(3)}"/>`;
+  // 新的一支箭頭（小指南針）
+  const hx = 1230, hy = 350, no = tsvk(u, 3.8, 0.6);
+  const deg = lerp(-30, 40, tsvOut(P(u, 4.0, 6.0))) + 10 * Math.sin((u - 4) * 4) * (1 - P(u, 4.0, 6.0)) * (u > 4 ? 1 : 0);
+  const a = deg * Math.PI / 180;
+  g += `<circle cx="${hx}" cy="${hy}" r="74" fill="none" stroke="${C.dim}" stroke-width="3" opacity="${no.toFixed(3)}"/>`;
+  g += arrow(hx, hy, hx + 66 * Math.cos(a), hy + 66 * Math.sin(a), C.yellow, no);
+  g += txt(hx, hy + 120, '再算一支新箭頭', { a: 'middle', s: 30, w: 1, f: C.chalk, o: tsvk(u, 4.4, 0.6) });
+  // 三句重點
+  const co = tsvk(u, 6.4, 0.6);
+  g += `<g opacity="${co.toFixed(3)}">${box(140, 560, 1320, 250, C.chalk, 1, C.deep)}</g>`;
+  [['字＝方向：意思近，方向就近', C.blue], ['整句濃縮成一支箭頭，跟每個字比對', C.yellow], ['照機率抽字；溫度和圍籬決定穩或活', C.green]].forEach(([s, col], i) => {
+    const o = tsvk(u, 7.0 + i * 1.1, 0.6), y = 630 + i * 64;
+    g += dot(190, y - 12, 12, col, o) + txt(224, y, s, { s: 36, w: 1, o });
+  });
+  return g;
+}
+
+// ===== 場景包裝：範本的 .t-chalk／.t-body 以 CSS fill 蓋掉 SVG fill 屬性，這裡把 fill 同步寫進 style，讓 txt() 的 f 顏色生效 =====
+const tsvpaint = (svg) => svg.replace(/<text ([^>]*?)fill="([^"]+)"/g, '<text $1style="fill:$2" fill="$2"');
+function s1(u) { return tsvpaint(tsv1(u)); }
+function s2(u) { return tsvpaint(tsv2(u)); }
+function s3(u) { return tsvpaint(tsv3(u)); }
+function s4(u) { return tsvpaint(tsv4(u)); }
+function s5(u) { return tsvpaint(tsv5(u)); }
+function s6(u) { return tsvpaint(tsv6(u)); }
+function s7(u) { return tsvpaint(tsv7(u)); }
+function s8(u) { return tsvpaint(tsv8(u)); }
+function s9(u) { return tsvpaint(tsv9(u)); }
+function s10(u) { return tsvpaint(tsv10(u)); }
+
+const SEGS = [
+  { len: 12, grp: "開場", name: "文字接龍", scene: s1,
+    cap: "LLM 寫字像<b>文字接龍</b>：每一步只猜「下一個字」（字或字的片段，叫做 token）。" },
+  { len: 14, grp: "字是方向", name: "字住在星空地圖", scene: s2,
+    cap: "每個字在模型裡都是<b>一串數字</b>，可以想成一個方向。意思相近的字，方向也相近，像住在同一個星座。（比喻）" },
+  { len: 12, grp: "字是方向", name: "方向會說話", scene: s3,
+    cap: "從「男人」走到「女人」的那一步，從「國王」出發走一樣的步，<b>會落在「皇后」旁邊</b>。" },
+  { len: 12, grp: "比對", name: "整句濃縮成一支箭頭", scene: s4,
+    cap: "模型讀完整句，把前文濃縮成<b>一支方向箭頭</b>，指向它覺得接下來該出現的那一區。" },
+  { len: 14, grp: "比對", name: "手電筒照星星", scene: s5,
+    cap: "拿這支箭頭去跟<b>每個字</b>比對：方向越對齊，分數越高。比對用的，正是同一份字表。" },
+  { len: 12, grp: "機率", name: "亮度變彈珠", scene: s6,
+    cap: "分數再換算成<b>機率</b>：像把 100 顆彈珠分給每個字，越亮的字拿得越多。（示意數字）" },
+  { len: 14, grp: "機率", name: "溫度旋鈕", scene: s7,
+    cap: "<b>溫度</b>像旋鈕：調低，彈珠擠向第一名；調高，彈珠攤平，冷門字也分得到。" },
+  { len: 12, grp: "抽字", name: "Top-p 圍籬", scene: s8,
+    cap: "<b>Top-p</b> 像圍籬：從最多的碗開始圈，累積到夠多（例如九成）就關門，<b>尾巴的冷門字不參加</b>。" },
+  { len: 14, grp: "抽字", name: "轉盤抽字", scene: s9,
+    cap: "最後<b>照機率抽</b>：扇形越大越容易抽中。永遠只挑第一名？研究發現那樣寫出的文字<b>平淡又重複</b>。" },
+  { len: 12, grp: "收束", name: "接回去，再來一次", scene: s10,
+    cap: "抽中的字接回句子，再用新的整句算出下一支箭頭——<b>一個字接一個字</b>，就這樣寫下去。" },
+];
+
+// ===================== 工具（通常不用改）=====================
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const P = (u, a, b) => clamp((u - a) / (b - a), 0, 1);           // u 在 [a,b] 的進度 0–1
+const ease = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const lerp = (a, b, k) => a + (b - a) * k;
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); } // 固定種子亂數
+function txt(x, y, s, o = {}) {
+  const a = o.a || 'start', size = o.s || 32, fill = o.f || 'var(--chalk)', op = o.o ?? 1, w = o.w ? 700 : 400, cls = o.c || 't-chalk';
+  return `<text x="${x}" y="${y}" class="${cls}" font-size="${size}" font-weight="${w}" text-anchor="${a}" fill="${fill}" opacity="${op}">${esc(s)}</text>`;
+}
+function box(x, y, w, h, stroke = 'var(--chalk)', op = 1, fill = 'none') {
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="18" fill="${fill}" stroke="${stroke}" stroke-width="3" opacity="${op}"/>`;
+}
+function head(u, kicker, title) {
+  const o = ease(P(u, 0, 0.8));
+  return txt(80, 90, kicker, { c: 't-body', s: 24, f: 'var(--chalk-dim)', o }) + txt(80, 150, title, { s: 50, w: 1, o });
+}
+
+let acc = 0; SEGS.forEach((s) => { s.a = acc; acc += s.len; s.b = acc; });
+window.DURATION = acc;
+window.SEGS = SEGS.map(({ len, grp, name, cap, a, b }) => ({ len, grp, name, cap, a, b }));
+const stage = document.getElementById('stage'), capEl = document.getElementById('caption');
+const segIndex = (t) => { for (let i = 0; i < SEGS.length; i++) if (t < SEGS[i].b) return i; return SEGS.length - 1; };
+window.seek = async function (t) {
+  t = clamp(Number(t) || 0, 0, window.DURATION);
+  const i = segIndex(t), s = SEGS[i];
+  const u = t - s.a;
+  // 段落切換時淡入淡出（只由 t 決定）
+  const fade = Math.min(P(u, 0, 0.35), i === SEGS.length - 1 ? 1 : 1 - P(u, s.len - 0.35, s.len));
+  stage.innerHTML = `<g opacity="${fade.toFixed(3)}">${s.scene(u)}</g>` +
+    txt(1520, 870, `${i + 1} / ${SEGS.length}・${s.grp}・${s.name}`, { a: 'end', c: 't-body', s: 18, f: 'var(--chalk-dim)' });
+  capEl.innerHTML = s.cap; // 字幕只來自本檔 SEGS（作者撰寫、只含 <b>）
+  return true;
+};
+window.ready = Promise.all([document.fonts ? document.fonts.ready.catch(() => null) : null]);
+
+// ===================== 播放器外殼（只呼叫 seek）=====================
+document.title = META.title;
+document.getElementById('title').textContent = META.title;
+document.getElementById('subtitle').textContent = META.subtitle;
+document.getElementById('note').textContent = META.note;
+stage.setAttribute('aria-label', META.ariaLabel);
+const works = document.getElementById('works');
+if (!META.works.length) document.querySelector('.works').hidden = true;
+for (const [label, desc, href] of META.works) {
+  const li = document.createElement('li'), a = document.createElement('a'), sp = document.createElement('span');
+  a.href = href; a.textContent = label; a.target = '_blank'; a.rel = 'noopener'; sp.textContent = desc;
+  li.append(a, sp); works.append(li);
+}
+const playBtn = document.getElementById('play'), scrub = document.getElementById('scrub'), timeEl = document.getElementById('time');
+scrub.max = window.DURATION;
+// 分段刻度：每段分界一條細線（段落起點／總長）；刻度只畫在 #seekMarks，不影響 range 本身
+const playerMarks = document.getElementById('seekMarks');
+SEGS.forEach((s, i) => { if (i > 0) { const d = document.createElement('i'); d.style.left = (s.a / window.DURATION * 100) + '%'; playerMarks.append(d); } });
+// 進度條列收合：預設收起；只有獨立播放（非 embed）才讀寫 localStorage 的 UI 狀態，embed 一律不碰；不可用時只留在記憶體
+const playerEmbed = document.documentElement.classList.contains('embed');
+const playerUiGet = (k) => { if (playerEmbed) return false; try { return localStorage.getItem(k) === '1'; } catch { return false; } };
+const playerUiSet = (k, v) => { if (playerEmbed) return; try { localStorage.setItem(k, v ? '1' : '0'); } catch { /* 不可用時只留在記憶體 */ } };
+let playerSeekOpen = playerUiGet('anim.ui.seek');
+const playerToggle = document.getElementById('toggleSeek'), playerSeekRow = document.getElementById('seekrow');
+function playerApplyUi() {
+  playerSeekRow.hidden = !playerSeekOpen;
+  playerToggle.setAttribute('aria-expanded', String(playerSeekOpen));
+  playerToggle.textContent = playerSeekOpen ? '進度條 ▾' : '進度條 ▸';
+}
+playerToggle.onclick = () => { playerSeekOpen = !playerSeekOpen; playerUiSet('anim.ui.seek', playerSeekOpen); playerApplyUi(); };
+playerApplyUi();
+// ===== 標註工具（手寫筆跡＋文字；以段落為單位、只存在記憶體、不送網路）=====
+// 與研習平台頁同一套操作：畫筆、文字、5 色色票、收回上一筆、清除本段標註；「標註工具 ▸／▾」可收合（預設收起，鍵 anim.ui.ink）。
+// ?embed=1 完全不啟用（研習平台自己有標註）。座標一律存 0–1 的相對位置，舞台縮放或長寬比改變時筆跡仍落在同一處。
+(() => {
+  if (document.documentElement.classList.contains('embed')) return;
+  const stageEl = document.getElementById('stage') || document.getElementById('c');
+  const ctl = document.querySelector('.controls') || document.getElementById('bar');
+  if (!stageEl || !ctl || typeof window.seek !== 'function') return;
+  const COLORS = ['#efe9d8', '#f2c14e', '#e8875b', '#7fb6d9', '#8fd18a'];
+  const ends = typeof SEGS !== 'undefined' ? SEGS.map((s) => s.b) : TIMING.map((s) => s.end);
+  const segOf = (t) => { for (let i = 0; i < ends.length; i++) if (t < ends[i]) return i; return ends.length - 1; };
+  const uiGet = () => { try { return localStorage.getItem('anim.ui.ink') === '1'; } catch { return false; } };
+  const uiSet = (v) => { try { localStorage.setItem('anim.ui.ink', v ? '1' : '0'); } catch { /* 不可用時只留在記憶體 */ } };
+  const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+  const store = new Map(); // 段落索引 → [{k:'s',color,pts} | {k:'l',x,y,text,color}]（依畫下順序）
+  const items = (i) => { let a = store.get(i); if (!a) store.set(i, (a = [])); return a; };
+  let seg = 0, tool = null, penColor = COLORS[1], drawing = null, labelAt = null, open = uiGet();
+
+  // 標註層：有 .board 就掛在木框內（與 SVG 同尺寸）；沒有（如純 canvas 舞台）就掛在舞台父層並追蹤舞台矩形
+  const board = stageEl.closest('.board'), host = board || stageEl.parentElement;
+  if (!board) host.style.position = 'relative';
+  const layer = mk('div', 'annoLayer'), cv = mk('canvas'), labels = mk('div', 'annoLabels'), inp = mk('input', 'annoInput');
+  cv.setAttribute('aria-label', '標註區');
+  inp.type = 'text'; inp.maxLength = 60; inp.hidden = true; inp.placeholder = '輸入文字，按 Enter 放上；Esc 取消'; inp.setAttribute('aria-label', '文字標註');
+  layer.append(cv, labels, inp); host.append(layer);
+  const ctx = cv.getContext('2d');
+
+  // 工具列（控制列第三列）與切換鈕
+  const toggle = mk('button', '', '標註工具 ▸'), row = mk('div', 'annoRow');
+  toggle.id = 'toggleInk'; toggle.type = 'button'; toggle.setAttribute('aria-controls', 'annoTools'); toggle.setAttribute('aria-expanded', 'false');
+  row.id = 'annoTools'; row.hidden = true;
+  const penBtn = mk('button', '', '畫筆'), textBtn = mk('button', '', '文字'), sw = mk('span', 'annoSwatches'), undoBtn = mk('button', '', '收回上一筆'), clearBtn = mk('button', '', '清除本段標註');
+  for (const b of [penBtn, textBtn, undoBtn, clearBtn]) b.type = 'button';
+  penBtn.setAttribute('aria-pressed', 'false'); textBtn.setAttribute('aria-pressed', 'false');
+  const swBtns = COLORS.map((c, i) => {
+    const b = mk('button', 'annoSwatch'); b.type = 'button'; b.style.background = c; b.setAttribute('aria-label', `顏色 ${i + 1}`); b.setAttribute('aria-pressed', c === penColor ? 'true' : 'false');
+    b.onclick = () => { penColor = c; swBtns.forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); if (labelAt) { inp.style.color = c; inp.focus(); } else if (!tool) setTool('pen'); };
+    sw.append(b); return b;
+  });
+  row.append(penBtn, textBtn, sw, undoBtn, clearBtn);
+  const seekToggle = document.getElementById('toggleSeek');
+  if (seekToggle && seekToggle.parentNode === ctl) seekToggle.after(toggle); else ctl.append(toggle);
+  ctl.append(row);
+
+  function fit() {
+    if (!board) { layer.style.inset = 'auto'; Object.assign(layer.style, { left: stageEl.offsetLeft + 'px', top: stageEl.offsetTop + 'px', width: stageEl.offsetWidth + 'px', height: stageEl.offsetHeight + 'px' }); }
+    const w = layer.clientWidth, h = layer.clientHeight, d = window.devicePixelRatio || 1;
+    layer.style.setProperty('--u', (w / 1600) + 'px');
+    cv.width = Math.max(1, Math.round(w * d)); cv.height = Math.max(1, Math.round(h * d));
+    redraw();
+  }
+  function strokePath(s) {
+    const p = s.pts, W = cv.width, H = cv.height, d = W / (layer.clientWidth || W);
+    if (p.length < 4) return;
+    ctx.strokeStyle = s.color; ctx.lineWidth = Math.max(2 * d, 5 * W / 1600); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(p[0] * W, p[1] * H);
+    for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i] * W, p[i + 1] * H);
+    ctx.stroke();
+  }
+  function redraw() {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    for (const it of items(seg)) if (it.k === 's') strokePath(it);
+    if (drawing && drawing.seg === seg) strokePath(drawing);
+  }
+  function renderLabels() {
+    labels.replaceChildren(...items(seg).filter((i) => i.k === 'l').map((l) => {
+      const d = mk('div', 'annoLabel', l.text);
+      d.style.left = (l.x * 100) + '%'; d.style.top = (l.y * 100) + '%'; d.style.color = l.color; d.style.borderColor = l.color;
+      return d;
+    }));
+  }
+  function setTool(t) {
+    tool = t;
+    penBtn.setAttribute('aria-pressed', t === 'pen' ? 'true' : 'false');
+    textBtn.setAttribute('aria-pressed', t === 'text' ? 'true' : 'false');
+    cv.classList.toggle('on', !!t); cv.classList.toggle('text-mode', t === 'text');
+    if (t !== 'text') closeInput();
+  }
+  function openInput(x, y) {
+    labelAt = { x, y, seg };
+    inp.value = ''; inp.style.left = (Math.min(x, 0.62) * 100) + '%'; inp.style.top = (Math.max(0.05, Math.min(y, 0.95)) * 100) + '%'; inp.style.color = penColor;
+    inp.hidden = false; requestAnimationFrame(() => inp.focus());
+  }
+  function closeInput() { inp.hidden = true; labelAt = null; }
+  function norm(e) {
+    const r = cv.getBoundingClientRect();
+    return [Math.round(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * 10000) / 10000, Math.round(Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) * 10000) / 10000];
+  }
+  function endStroke() {
+    if (!drawing) return;
+    const s = drawing; drawing = null;
+    if (s.pts.length === 2) s.pts.push(s.pts[0] + 1 / 1600, s.pts[1] + 1 / 900); // 點一下也留下一個點
+    items(s.seg).push(s);
+    if (s.seg === seg) redraw();
+  }
+  cv.addEventListener('pointerdown', (e) => {
+    if (!tool) return;
+    e.preventDefault();
+    const [x, y] = norm(e);
+    if (tool === 'text') { openInput(x, y); return; }
+    cv.setPointerCapture(e.pointerId);
+    drawing = { k: 's', seg, color: penColor, pts: [x, y] };
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!drawing) return;
+    const [x, y] = norm(e), p = drawing.pts, r = cv.getBoundingClientRect();
+    if (Math.hypot((x - p[p.length - 2]) * r.width, (y - p[p.length - 1]) * r.height) < 3 || p.length >= 800) return;
+    p.push(x, y); redraw();
+  });
+  cv.addEventListener('pointerup', endStroke);
+  cv.addEventListener('pointercancel', endStroke);
+  cv.addEventListener('click', (e) => e.stopPropagation()); // 全螢幕「點畫面播放／暫停」不被標註動作觸發
+  // 文字輸入：所有按鍵都不往上送，空白鍵、方向鍵、F 不會觸發播放器快捷鍵
+  inp.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter' && !e.isComposing) {
+      e.preventDefault();
+      const text = inp.value.trim();
+      if (text && labelAt) { items(labelAt.seg).push({ k: 'l', x: labelAt.x, y: labelAt.y, text, color: penColor }); if (labelAt.seg === seg) renderLabels(); }
+      closeInput();
+    } else if (e.key === 'Escape') closeInput();
+  });
+  inp.addEventListener('keyup', (e) => e.stopPropagation());
+  inp.addEventListener('blur', (e) => { if (e.relatedTarget && row.contains(e.relatedTarget)) return; closeInput(); }); // 點色票／按鈕時保留輸入，點別處就取消
+  penBtn.onclick = () => setTool(tool === 'pen' ? null : 'pen');
+  textBtn.onclick = () => setTool(tool === 'text' ? null : 'text');
+  undoBtn.onclick = () => { if (items(seg).pop()) { redraw(); renderLabels(); } };
+  clearBtn.onclick = () => { if (items(seg).length && confirm('清除本段所有筆跡與文字標註？')) { items(seg).length = 0; redraw(); renderLabels(); } };
+  function applyUi() {
+    row.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.textContent = open ? '標註工具 ▾' : '標註工具 ▸';
+    if (!open) setTool(null);
+  }
+  toggle.onclick = () => { open = !open; uiSet(open); applyUi(); };
+  // 全螢幕下不放工具列；進入全螢幕時關閉畫筆，筆跡仍顯示（標註層在全螢幕元素內）
+  document.addEventListener('fullscreenchange', () => { if (document.fullscreenElement) setTool(null); });
+  // 換段時顯示該段的標註：包住 seek，不改變 seek 的畫面與回傳值
+  const baseSeek = window.seek;
+  window.seek = async function (t) {
+    const r = await baseSeek.call(this, t);
+    const i = segOf(Number(t) || 0);
+    if (i !== seg) { seg = i; closeInput(); redraw(); renderLabels(); }
+    return r;
+  };
+  new ResizeObserver(fit).observe(board || stageEl);
+  applyUi(); fit();
+})();
+let cur = 0, playing = false, last = 0;
+const chap = document.getElementById('chapters');
+const btns = SEGS.map((s, i) => {
+  const li = document.createElement('li'), b = document.createElement('button');
+  b.type = 'button'; b.textContent = `${i + 1}・${s.name}`; b.onclick = () => { playerPause(); playerShow(s.a); };
+  li.append(b); chap.append(li); return b;
+});
+function playerShow(t) {
+  cur = clamp(t, 0, window.DURATION); scrub.value = cur;
+  timeEl.textContent = `${cur.toFixed(1)} / ${window.DURATION.toFixed(1)}`;
+  window.seek(cur);
+  const i = segIndex(cur); btns.forEach((b, j) => b.setAttribute('aria-current', j === i ? 'true' : 'false'));
+}
+function playerTick(now) { if (!playing) return; cur += (now - last) / 1000; last = now; if (cur >= window.DURATION) { cur = window.DURATION; playerPause(); } playerShow(cur); if (playing) requestAnimationFrame(playerTick); }
+function playerPlay() { if (cur >= window.DURATION - 0.05) cur = 0; playing = true; playBtn.textContent = '暫停'; last = performance.now(); requestAnimationFrame(playerTick); }
+function playerPause() { playing = false; playBtn.textContent = '播放'; }
+playBtn.onclick = () => (playing ? playerPause() : playerPlay());
+scrub.oninput = () => { playerPause(); playerShow(Number(scrub.value)); };
+document.getElementById('prev').onclick = () => { playerPause(); playerShow(SEGS[segIndex(cur - 0.6)].a); };
+document.getElementById('next').onclick = () => { playerPause(); const i = segIndex(cur) + 1; playerShow(i < SEGS.length ? SEGS[i].a : window.DURATION); };
+document.getElementById('fs').onclick = () => { const th = document.getElementById('theater'); document.fullscreenElement ? document.exitFullscreen() : th.requestFullscreen?.(); };
+addEventListener('keydown', (e) => {
+  if (document.documentElement.classList.contains('embed')) return;
+  if (e.target.closest('input,button')) return;
+  if (e.key === ' ') { e.preventDefault(); playing ? playerPause() : playerPlay(); }
+  else if (e.key === 'ArrowRight') document.getElementById('next').click();
+  else if (e.key === 'ArrowLeft') document.getElementById('prev').click();
+  else if (e.key === 'f' || e.key === 'F') document.getElementById('fs').click();
+});
+window.ready.then(() => playerShow(cur));
+// 研習平台嵌入契約（postMessage 握手，鍵名 ptt 為相容用）：被嵌入時才啟用
+addEventListener('message', (e) => {
+  if (e.source !== window.parent || window.parent === window) return;
+  const m = e.data;
+  if (!m || m.ptt !== 1 || m.type !== 'seek' || typeof m.t !== 'number' || !Number.isFinite(m.t)) return;
+  window.seek(m.t);
+});
+if (window.parent !== window) window.ready.then(() => parent.postMessage({ ptt: 1, type: 'ready', duration: window.DURATION }, '*'));
+</script>
+</html>
