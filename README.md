@@ -68,8 +68,6 @@
 | 4 | [02 本機 Harness](lessons/02-local-harness-adaptive-loop.md)：Adaptive Loop、Route Plan、分工、驗證預算 | 講義 |
 | 5 | [03 eduHarness Skill](lessons/03-eduharness-skills-workflow.md)：Skill 套件與用途 → 工作流程 | 講義 |
 | 6 | [04 eduHarness_Nooa](lessons/04-eduharness-nooa-cloud-registry-v3.md)：雲端版與 Registry v3 | 講義 |
-| 7 | [Harness²：改的不是模型，是外面那層](https://bai-collab.github.io/llm_teach/animations/harness2-eval/)：借設計評估與一次 A/B 小實驗 | 動畫 144 秒 |
-| 8 | [Colab 模型實驗室＋Harness² 架構](https://bai-collab.github.io/llm_teach/animations/colab-harness2-arch/)：本機遙控雲端、批次索引、A100 對 Opus 評測結果 | 動畫 150 秒 |
 
 **課堂提問**：你的備課流程中，哪一步最需要「老師核准」才能往下走？
 
@@ -81,6 +79,9 @@
 |---|---|---|
 | 1 | [05 Claude Code Mod Hook 流程](lessons/05-claude-code-mod-hook-flow.md)：prompt-optimizer 拆解 | 講義（附練習） |
 | 2 | [06 延伸專案](lessons/06-related-llm-projects.md)：瀏覽器端模型、教師工作台等 | 講義 |
+| 3 | [程式變成神經網路？拆解 Handwired](https://bai-collab.github.io/llm_teach/animations/handwired-explained/)：if、迴圈改寫成電路，精確與梯度的前提 | 動畫 134 秒 |
+| 4 | [Harness²：改的不是模型，是外面那層](https://bai-collab.github.io/llm_teach/animations/harness2-eval/)：借設計評估與一次 A/B 小實驗 | 動畫 144 秒 |
+| 5 | [Colab 模型實驗室＋Harness² 架構](https://bai-collab.github.io/llm_teach/animations/colab-harness2-arch/)：本機遙控雲端、批次索引、A100 對 Opus 評測結果 | 動畫 150 秒 |
 
 **課堂提問**：如果要寫一個 hook 擋住你最怕 AI 犯的錯，你會擋什麼？
 
