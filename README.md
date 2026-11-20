@@ -3,7 +3,7 @@
 把 bai-collab 各 repo 中與 **LLM／Agent Harness／Claude Code** 相關的內容，整理成一門由淺入深的課。
 **網站版（含動畫）：<https://bai-collab.github.io/llm_teach/>**
 **遊戲版：<https://bai-collab.github.io/llm_teach/world/>**（操控 3D 老師走過四座島，每座島對應單元一到四；第一島西邊還有 Skill 圖書館）
-**Skill 藏書：[skills/](skills/README.md)**（23 本教學相關 skill 原檔，依用途與目的整理）
+**Skill 藏書：[skills/](skills/README.md)**（24 本教學相關 skill 原檔，依用途與目的整理）
 
 ## 🧭 課程地圖
 
@@ -82,6 +82,7 @@
 | 3 | [程式變成神經網路？拆解 Handwired](https://bai-collab.github.io/llm_teach/animations/handwired-explained/)：if、迴圈改寫成電路，精確與梯度的前提 | 動畫 134 秒 |
 | 4 | [Harness²：改的不是模型，是外面那層](https://bai-collab.github.io/llm_teach/animations/harness2-eval/)：借設計評估與一次 A/B 小實驗 | 動畫 144 秒 |
 | 5 | [Colab 模型實驗室＋Harness² 架構](https://bai-collab.github.io/llm_teach/animations/colab-harness2-arch/)：本機遙控雲端、批次索引、A100 對 Opus 評測結果 | 動畫 150 秒 |
+| 6 | [三家模型怎麼一起找漏洞？](https://bai-collab.github.io/llm_teach/animations/tri-family-swarm/)：組內紅藍、組間只對相反點、並列統整交人裁決；附 [技能原文](skills/tri-family-conjecture-swarm/SKILL.md) | 動畫 136 秒 |
 
 **課堂提問**：如果要寫一個 hook 擋住你最怕 AI 犯的錯，你會擋什麼？
 
@@ -144,7 +145,7 @@
 llm_teach/
 ├─ index.html                        # 網站首頁（課程地圖＋動畫入口）
 ├─ world/index.html                  # 遊戲版：AI 協作群島（四座島＋Skill 圖書館）
-├─ skills/                           # 23 本教學相關 skill 原檔與索引（README.md）
+├─ skills/                           # 24 本教學相關 skill 原檔與索引（README.md）
 ├─ README.md                         # ← 你在這裡：課程地圖與主題索引
 ├─ animations/                       # 教學動畫（單檔 HTML，GitHub Pages 可直接播放）
 │  ├─ teacher-as-director/index.html # 老師當導演：跟 AI 一起備課（123 秒・10 段，成果牆可點開作品）

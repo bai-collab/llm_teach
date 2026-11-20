@@ -1,4 +1,4 @@
-# Skill 藏書（23 本）
+# Skill 藏書（24 本）
 
 > 🧭 [課程地圖](../README.md)｜[遊戲版：Skill 圖書館](https://bai-collab.github.io/llm_teach/world/)（第一島西邊的橋）
 
@@ -41,6 +41,7 @@
 | Skill | 用途 | 什麼時候用 |
 |---|---|---|
 | [AI 創作協作循環](creative-collaboration-loop/SKILL.md) | 發散、收斂各兩輪的 AI 協作；每一步先決定 AI 要替代、加速、擴張還是挑戰。 | 構想還不清楚、想跟 AI 一起發想時 |
+| [三家臆測討論](tri-family-conjecture-swarm/SKILL.md) | 三個模型家族各自組內紅藍對抗，組間只對結論相反的點對抗，主持人並列統整、分歧交人裁決。 | 想讓多個模型家族互相找漏洞，又要把分歧留給人判斷時 |
 | [海明威寫作法](hemingway-writing/SKILL.md) | 去掉副詞與抽象形容，用具體可見的畫面寫作。 | 文章、講稿想更有畫面感時 |
 
 ## 解說與工具

@@ -1,0 +1,7 @@
+interface:
+  display_name: "三家臆測討論"
+  short_description: "三個模型家族各自組內紅藍對抗，組間只對結論相反的點對抗，最後並列統整、分歧交使用者裁決"
+  default_prompt: "使用 $tri-family-conjecture-swarm 讓三家模型分組討論並改進這份計畫書。"
+
+policy:
+  allow_implicit_invocation: true
